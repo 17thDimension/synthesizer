@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html ng-keyup="keyPress()" ng-keydown="keyRelease()">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, width=device-width, minimal-ui">
+    <title>synthesizerDev</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="white-translucent">
+    <link href="css/app.css?v=1434354612093" rel="stylesheet">
+    <link rel="icon" type="image/png" href="img/favicon.png">
+    <link rel="apple-touch-icon" href="img/favicon.png">
+    <script>
+      GLOBALS = {"ANGULAR_APP_NAME":"synthesizer","BUNDLE_NAME":"synthesizerDev","BUNDLE_VERSION":"1.0.0","CODE_VERSION":"86fd11a6f1d49c922a0b5592eccade1c4ea63d12","DEPLOY_TIME":1434354612093,"ENV":"development","ROLLBAR_SOURCEMAPS_URL_PREFIX":"https://synthesizer.com","WEINRE_ADDRESS":"192.168.1.33:31173"};
+      
+    </script>
+    <script src="js/vendor.js?v=1434354612093"></script>
+    <script src="js/app_templates.js?v=1434354612093"></script>
+    <script src="js/app.js?v=1434354612093"></script>
+    <script id="cordova-js" src="cordova.js"></script>
+  </head>
+  <body>
+    <!--
+    The nav bar that will be updated as we navigate between views
+    Additional attributes set its look, nav-bar animation and icons
+    Icons provided by Ionicons: http://ionicons.com/
+    
+    -->
+    <ion-nav-bar class="bar-positive"></ion-nav-bar>
+    <!--
+    The views will be rendered in the <nav-view> directive below
+    Templates are in the /templates folder (but you could also
+    have templates inline in this html file if you'd like).
+    
+    -->
+    <ion-nav-view></ion-nav-view>
+  </body>
+</html>
