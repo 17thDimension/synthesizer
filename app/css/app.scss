@@ -1,0 +1,15 @@
+@import "ionic.css";
+
+body {
+  background-color: gray;
+}
+
+
+input[type=range]
+{
+  -ms-transform: rotate(-90deg); /* IE 9 */
+  -webkit-transform: rotate(-90deg); /* Chrome, Safari, Opera */
+}
+canvas{
+  width:100%;
+}
