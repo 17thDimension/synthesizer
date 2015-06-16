@@ -441,6 +441,15 @@
 }).call(this);
 
 (function() {
+  window._ = {};
+
+  window._.defined = function(obj) {
+    return typeof obj !== 'undefined';
+  };
+
+}).call(this);
+
+(function() {
   String.prototype.isNodeKey = function() {
     return this.length === 1 && this.match(/[A-Za-z0-9 _]*[A-Za-z0-9][A-Za-z0-9 _]/i);
   };
@@ -555,6 +564,45 @@ A simple example service that returns some data.
  */
 
 (function() {
+  angular.module("synthesizer").factory("AudioAnalyzerService", function($window, AudioContextService) {
+    var analyzer, context;
+    context = AudioContextService.getContext();
+    analyzer = context.createAnalyser();
+    analyzer.connect(context.destination);
+    return {
+      getAnalyzer: function() {
+        return analyzer;
+      }
+    };
+  });
+
+}).call(this);
+
+
+/*
+A simple example service that returns some data.
+ */
+
+(function() {
+  angular.module("synthesizer").factory("AudioContextService", function($window) {
+    var context, nodes;
+    nodes = {};
+    context = new ($window.AudioContext || $window.webkitAudioContext)();
+    return {
+      getContext: function() {
+        return context;
+      }
+    };
+  });
+
+}).call(this);
+
+
+/*
+A simple example service that returns some data.
+ */
+
+(function() {
   angular.module("synthesizer").factory("LoopService", function() {
     var Node, nodes;
     nodes = {};
@@ -599,7 +647,7 @@ A simple example service that returns some data.
     hasProp = {}.hasOwnProperty;
 
   angular.module("synthesizer").factory("NodeService", function(OscillatorService, TimeService, RecordService, TrackService, LoopService) {
-    var Node, OscillatorNode, RecordNode, control_keys, oscillator_keys, record_key;
+    var IvoryNode, Node, RecordNode, control_keys, ivory_keys, record_key;
     Node = (function() {
       function Node(key1) {
         this.key = key1;
@@ -625,29 +673,29 @@ A simple example service that returns some data.
       return Node;
 
     })();
-    OscillatorNode = (function(superClass) {
-      extend(OscillatorNode, superClass);
+    IvoryNode = (function(superClass) {
+      extend(IvoryNode, superClass);
 
-      function OscillatorNode(key1, frequency) {
+      function IvoryNode(key1, frequency) {
         this.key = key1;
         this.frequency = frequency;
-        OscillatorNode.__super__.constructor.call(this, this.key);
+        IvoryNode.__super__.constructor.call(this, this.key);
       }
 
-      OscillatorNode.prototype.activate = function(velocity) {
+      IvoryNode.prototype.activate = function(velocity) {
         if (!this.active) {
           console.log('note on' + this.key);
           OscillatorService.nodeOn(this);
         }
-        return OscillatorNode.__super__.activate.call(this, velocity);
+        return IvoryNode.__super__.activate.call(this, velocity);
       };
 
-      OscillatorNode.prototype.silence = function(velocity) {
+      IvoryNode.prototype.silence = function(velocity) {
         OscillatorService.nodeOff(this);
-        return OscillatorNode.__super__.silence.call(this);
+        return IvoryNode.__super__.silence.call(this);
       };
 
-      return OscillatorNode;
+      return IvoryNode;
 
     })(Node);
     RecordNode = (function(superClass) {
@@ -672,17 +720,17 @@ A simple example service that returns some data.
       return RecordNode;
 
     })(Node);
-    oscillator_keys = "abcdefghijklmnopqrstuvwxyz1234567890";
+    ivory_keys = "abcdefghijklmnopqrstuvwxyz1234567890";
     control_keys = ",./;[]`-='← → ↑ ↓";
     record_key = " ";
     return {
       initializeNodes: function() {
         var i, key, len, nodes, ref;
         nodes = {};
-        ref = oscillator_keys.toUpperCase().split('');
+        ref = ivory_keys.toUpperCase().split('');
         for (i = 0, len = ref.length; i < len; i++) {
           key = ref[i];
-          nodes[key] = new OscillatorNode(key, OscillatorService.frequencyForKey(key));
+          nodes[key] = new IvoryNode(key, OscillatorService.frequencyForKey(key));
         }
         nodes[record_key] = new RecordNode(record_key);
         return nodes;
@@ -701,28 +749,55 @@ A simple example service that returns some data.
  */
 
 (function() {
-  angular.module("synthesizer").factory("OscillatorService", function() {
-    var glide, synth;
-    glide = T('param', {
-      value: 20
-    });
-    synth = T('sin', {
-      freq: glide,
-      mul: 0.2
-    }).play();
-    T('scope', {
-      interval: 10
-    }).on('data', function() {
-      this.plot({
-        target: document.getElementsByTagName('canvas')[0]
-      });
-    }).listen(synth);
+  angular.module("synthesizer").factory("OscillatorService", function(AudioContextService, AudioAnalyzerService) {
+    var audioContext, oscillators;
+    audioContext = AudioContextService.getContext();
+    oscillators = [];
     return {
-      nodeOn: function(node) {
-        console.log(node);
-        return glide.linTo(node.frequency, '100ms');
+      initializeOscillators: function() {
+        var addOscillator;
+        addOscillator = function(type) {
+          var analyzer, osc;
+          osc = audioContext.createOscillator();
+          osc.type = 'sine';
+          osc.frequency.value = 0;
+          analyzer = AudioAnalyzerService.getAnalyzer();
+          osc.connect(analyzer);
+          osc.start();
+          return oscillators.push(osc);
+        };
+        addOscillator('sin');
+        addOscillator('sin');
+        addOscillator('sin');
+        addOscillator('sin');
+        addOscillator('sin');
+        return addOscillator('sin');
       },
-      nodeOff: function(node) {},
+      fetchOscillator: function(node) {
+        var i, len, osc;
+        for (i = 0, len = oscillators.length; i < len; i++) {
+          osc = oscillators[i];
+          if (_.defined(osc.originNode)) {
+            if (osc.originNode.key === node.key && node.active) {
+              return osc;
+            }
+          } else if (!node.active) {
+            return osc;
+          }
+        }
+      },
+      nodeOn: function(node) {
+        var osc;
+        osc = this.fetchOscillator(node);
+        osc.originNode = node;
+        return osc.frequency.value = node.frequency;
+      },
+      nodeOff: function(node) {
+        var osc;
+        osc = this.fetchOscillator(node);
+        osc.frequency.value = 0;
+        return delete osc.originNode;
+      },
       frequencyForKey: function(key) {
         var ratioDictionary, root;
         root = 100;
@@ -764,9 +839,6 @@ A simple example service that returns some data.
           9: 42 / 7,
           0: 42 / 7
         };
-        console.trace();
-        console.log(key, ratioDictionary[key]);
-        console.log(root * ratioDictionary[key]);
         return root * ratioDictionary[key];
       }
     };
@@ -794,9 +866,8 @@ A simple example service that returns some data.
 }).call(this);
 
 (function() {
-  angular.module("synthesizer").controller("SynthCtrl", function($scope, $stateParams, SynthService) {
+  angular.module("synthesizer").controller("SynthCtrl", function($scope, $stateParams, SynthService, AudioVisualizerService) {
     var findNodeKey;
-    console.log('begin synth');
     $scope.nodes = SynthService.nodes;
     $scope.activateNode = function(key) {
       return SynthService.activate(key);
@@ -847,11 +918,10 @@ A simple example service that returns some data.
  */
 
 (function() {
-  angular.module("synthesizer").factory("SynthService", function(NodeService) {
-    var nodes;
-    console.log(NodeService);
+  angular.module("synthesizer").factory("SynthService", function(NodeService, OscillatorService) {
+    var nodes, oscillators;
     nodes = NodeService.initializeNodes();
-    console.log(nodes);
+    oscillators = OscillatorService.initializeOscillators();
     return {
       activate: function(o) {
         if (typeof nodes[o] === 'undefined') {
@@ -924,6 +994,50 @@ A simple example service that returns some data.
         }
         return results;
       }
+    };
+  });
+
+}).call(this);
+
+
+/*
+A simple example service that returns some data.
+ */
+
+(function() {
+  angular.module("synthesizer").factory("AudioVisualizerService", function(AudioAnalyzerService, $window) {
+    var analyser, canvas, canvasCtx, drawFrame;
+    canvas = $window.document.querySelector('.oscilloscope');
+    analyser = AudioAnalyzerService.getAnalyzer();
+    canvasCtx = canvas.getContext('2d');
+    return drawFrame = function() {
+      var HEIGHT, WIDTH, drawVisual, i, sliceWidth, v, x, y;
+      WIDTH = $window.getClientWidth();
+      HEIGHT = 200;
+      drawVisual = requestAnimationFrame(draw);
+      analyser.getByteTimeDomainData(dataArray);
+      canvasCtx.fillStyle = 'rgb(200, 200, 200)';
+      canvasCtx.fillRect(0, 0, WIDTH, HEIGHT);
+      canvasCtx.lineWidth = 2;
+      canvasCtx.strokeStyle = 'rgb(0, 0, 0)';
+      canvasCtx.beginPath();
+      sliceWidth = WIDTH * 1.0 / bufferLength;
+      x = 0;
+      i = 0;
+      while (i < bufferLength) {
+        v = dataArray[i] / 128.0;
+        y = v * HEIGHT / 2;
+        if (i === 0) {
+          canvasCtx.moveTo(x, y);
+        } else {
+          canvasCtx.lineTo(x, y);
+        }
+        x += sliceWidth;
+        i++;
+      }
+      canvasCtx.lineTo(canvas.width, canvas.height / 2);
+      canvasCtx.stroke();
+      return draw();
     };
   });
 
