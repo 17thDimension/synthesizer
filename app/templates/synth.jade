@@ -28,11 +28,11 @@ html
             .col
               .icon.button.button-icon.ion-wand
             .col
-              input(type="range")
+              input(type="range",ng-change="updateGain(g)",ng-model='g')
             .col
               .icon.button.button-icon.ion-magnet
             .col
-              input(type="range")
+              input(type="range",ng-change="updateCutoff(ct)",ng-model='ct')
             .col
               .icon.button.button-icon.ion-earth
             .col
@@ -44,11 +44,11 @@ html
           .row
             .col .
           .row.wave-form
-            canvas#wave-form.col
+            canvas.oscilloscope.col
           .row
           .row
             .col.icon.button.button-icon.ion-more
-            .col.icon.button.button-icon.ion-levels
+            .col.icon.button.button-icon.ion-speedometer
             .col.icon.button.button-icon.ion-chevron-up
             .col.icon.button.button-icon.ion-stats-bars
             .col.icon.button.button-icon.ion-scissors
@@ -56,7 +56,7 @@ html
             .col
             .col
             .col.icon.button.button-icon.ion-chevron-left
-            .col.icon.button.button-icon.ion-record
+            .col.icon.button.button-icon.ion-record(ng-class='recording()?"red":""',ng-click='toggleRecording()')
             .col.icon.button.button-icon.ion-chevron-right
             .col
             .col

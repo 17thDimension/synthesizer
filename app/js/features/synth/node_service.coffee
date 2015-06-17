@@ -24,7 +24,7 @@ angular.module("synthesizer")
       else
         @active=yes
 
-  class OscillatorNode extends Node
+  class IvoryNode extends Node
 
     constructor:(@key,@frequency) ->
       super(@key)
@@ -32,7 +32,6 @@ angular.module("synthesizer")
     activate:(velocity)->
 
       if !@active
-        console.log('note on' +@key)
         OscillatorService.nodeOn @
       super(velocity)
 
@@ -45,22 +44,21 @@ angular.module("synthesizer")
       super(@key)
 
     activate:(velocity)->
+      if !@active
+        RecordService.toggleRecording()
       super(velocity)
-      RecordService.startRecording()
 
     silence:(velocity)->
-      OscillatorService.nodeOff @
-      RecordService.startRecording()
       super()
 
 
-  oscillator_keys="abcdefghijklmnopqrstuvwxyz1234567890"
+  ivory_keys="abcdefghijklmnopqrstuvwxyz1234567890"
   control_keys = ",./;[]`-='← → ↑ ↓"
   record_key = " "
   initializeNodes : () ->
     nodes={}
-    for key in oscillator_keys.toUpperCase().split('')
-      nodes[key] = new OscillatorNode(
+    for key in ivory_keys.toUpperCase().split('')
+      nodes[key] = new IvoryNode(
         key,
         OscillatorService.frequencyForKey key
       )

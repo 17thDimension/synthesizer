@@ -3,21 +3,38 @@ A simple example service that returns some data.
 ###
 angular.module("synthesizer")
 
-.factory "OscillatorService", ()->
-  glide = T('param', value: 20)
-  synth = T('sin',
-    freq: glide
-    mul: 0.2).play()
-  T('scope', interval: 10).on('data', ->
-    @plot target: document.getElementsByTagName('canvas')[0]
-    return
-  ).listen synth
+.factory "OscillatorService", (AudioContextService,AudioAnalyzerService)->
+  audioContext=AudioContextService.getContext()
+  oscillators=[]
+  initializeOscillators:()->
+    addOscillator = (type)->
+      osc=audioContext.createOscillator()
+      osc.type='sine'
+      osc.frequency.value = 0
+      osc.start()
+      oscillators.push osc
+    addOscillator('sin')
+    addOscillator('sin')
+    addOscillator('sin')
+    addOscillator('sin')
+    addOscillator('sin')
+    addOscillator('sin')
+    return oscillators
+  fetchOscillator:(node)->
+    for osc in oscillators
+      if _.defined osc.originNode
+        if osc.originNode.key == node.key && node.active
+          return osc
+      else if not node.active
+        return osc
   nodeOn: (node)->
-    console.log(node)
-    glide.linTo node.frequency, '100ms'
-    #synth.noteOnWithFreq(node.frequency)
+    osc=@fetchOscillator(node)
+    osc.originNode=node
+    osc.frequency.value=node.frequency
   nodeOff: (node)->
-    #synth.noteOffWithFreq(node.frequency)
+    osc=@fetchOscillator(node)
+    osc.frequency.value=0
+    delete osc.originNode
   frequencyForKey: (key)->
     root=100
     ratioDictionary=
@@ -57,7 +74,4 @@ angular.module("synthesizer")
       8: 42/7
       9: 42/7
       0: 42/7
-    console.trace()
-    console.log key,ratioDictionary[key]
-    console.log root*ratioDictionary[key]
     return root*ratioDictionary[key]

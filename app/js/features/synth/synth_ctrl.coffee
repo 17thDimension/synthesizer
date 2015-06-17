@@ -1,14 +1,24 @@
 angular.module("synthesizer")
 
 # A simple controller that shows a tapped item's data
-.controller "SynthCtrl", ($scope, $stateParams, SynthService) ->
-  console.log('begin synth')
+.controller "SynthCtrl", ($scope,$stateParams
+    ,AudioContextService,
+    SynthService,BiquadService,RecordService) ->
+
+  SynthService.initialize()
+  $scope.recording= RecordService.isRecording
+
   $scope.nodes=SynthService.nodes
+
   $scope.activateNode= (key)->
     SynthService.activate(key)
   $scope.silenceNode = (key)->
     SynthService.silence(key)
 
+  $scope.updateCutoff = (val)->
+    BiquadService.setCutoff(val*100)
+  $scope.updateGain = (val)->
+    BiquadService.setGain(val*2)
   $scope.keyPress = ()->
     console.log('up')
   $scope.keyRelease = ()->
@@ -23,6 +33,14 @@ angular.module("synthesizer")
       when charCode == 40 then '↓'
       else String.fromCharCode(charCode).toUpperCase()
 
+  $scope.toggleRecording = ()->
+    $scope.recording=!$scope.recording
+    if $scope.recording
+      console.log 'start'
+      RecordService.startRecording()
+    else
+      console.log 'stop'
+      RecordService.stopRecording()
   document.onkeydown = (e) ->
     nodeKey=findNodeKey(e)
     $scope.activateNode(nodeKey)
