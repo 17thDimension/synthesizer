@@ -457,6 +457,103 @@
 }).call(this);
 
 (function() {
+  (function(window) {
+    var Recorder, WORKER_PATH;
+    WORKER_PATH = 'components/Recorderjs/recorderWorker.js';
+    Recorder = function(source, cfg) {
+      var bufferLen, config, currCallback, numChannels, recording, worker;
+      console.log(source);
+      config = cfg || {};
+      bufferLen = config.bufferLen || 4096;
+      numChannels = config.numChannels || 2;
+      this.context = source.context;
+      this.node = (this.context.createScriptProcessor || this.context.createJavaScriptNode).call(this.context, bufferLen, numChannels, numChannels);
+      worker = new Worker(config.workerPath || WORKER_PATH);
+      worker.postMessage({
+        command: 'init',
+        config: {
+          sampleRate: this.context.sampleRate,
+          numChannels: numChannels
+        }
+      });
+      recording = false;
+      currCallback = void 0;
+      this.node.onaudioprocess = function(e) {
+        var buffer, channel;
+        if (!recording) {
+          return;
+        }
+        buffer = [];
+        channel = 0;
+        while (channel < numChannels) {
+          buffer.push(e.inputBuffer.getChannelData(channel));
+          channel++;
+        }
+        worker.postMessage({
+          command: 'record',
+          buffer: buffer
+        });
+      };
+      this.configure = function(cfg) {
+        var prop;
+        for (prop in cfg) {
+          if (cfg.hasOwnProperty(prop)) {
+            config[prop] = cfg[prop];
+          }
+        }
+      };
+      this.record = function() {
+        recording = true;
+      };
+      this.stop = function() {
+        recording = false;
+      };
+      this.clear = function() {
+        worker.postMessage({
+          command: 'clear'
+        });
+      };
+      this.getBuffer = function(cb) {
+        currCallback = cb || config.callback;
+        worker.postMessage({
+          command: 'getBuffer'
+        });
+      };
+      this.exportWAV = function(cb, type) {
+        currCallback = cb || config.callback;
+        type = type || config.type || 'audio/wav';
+        if (!currCallback) {
+          throw new Error('Callback not set');
+        }
+        worker.postMessage({
+          command: 'exportWAV',
+          type: type
+        });
+      };
+      worker.onmessage = function(e) {
+        var blob;
+        blob = e.data;
+        currCallback(blob);
+      };
+      source.connect(this.node);
+      this.node.connect(this.context.destination);
+    };
+    Recorder.forceDownload = function(blob, filename) {
+      var click, link, url;
+      url = (window.URL || window.webkitURL).createObjectURL(blob);
+      link = window.document.createElement('a');
+      link.href = url;
+      link.download = filename || 'output.wav';
+      click = document.createEvent('Event');
+      click.initEvent('click', true, true);
+      link.dispatchEvent(click);
+    };
+    window.Recorder = Recorder;
+  })(window);
+
+}).call(this);
+
+(function() {
   angular.module("synthesizer").service('Auth', function($http, PromiseFactory) {
     var Auth, USER_EMAIL_CACHE_KEY, USER_TOKEN_CACHE_KEY;
     USER_EMAIL_CACHE_KEY = "user_email";
@@ -507,14 +604,14 @@
 
 (function() {
   angular.module("synthesizer").controller("PatchDetailCtrl", function($scope, $stateParams, PetService) {
-    return $scope.pet = PetService.get($stateParams.petId);
+    return $scope.patch = PatchService.get($stateParams.petId);
   });
 
 }).call(this);
 
 (function() {
-  angular.module("synthesizer").controller("PatchIndexCtrl", function($scope, BoardService) {
-    return $scope.boards = BoardService.all();
+  angular.module("synthesizer").controller("PatchIndexCtrl", function($scope, PatchService) {
+    return $scope.patches = PatchService.all();
   });
 
 }).call(this);
@@ -531,19 +628,19 @@ A simple example service that returns some data.
       {
         id: 0,
         title: "Cats",
-        description: "Furry little creatures. Obsessed with plotting assassination, but never following through on it."
+        info: "Cat sample patch"
       }, {
         id: 1,
         title: "Dogs",
-        description: "Lovable. Loyal almost to a fault. Smarter than they let on."
+        info: "Real Doggy barks"
       }, {
         id: 2,
         title: "Turtles",
-        description: "Everyone likes turtles."
+        info: "Turtle sound patch"
       }, {
         id: 3,
         title: "Sharks",
-        description: "An advanced pet. Needs millions of gallons of salt water. Will happily eat you."
+        info: "Cat sample patch"
       }
     ];
     return {
@@ -564,14 +661,55 @@ A simple example service that returns some data.
  */
 
 (function() {
-  angular.module("synthesizer").factory("AudioAnalyzerService", function($window, AudioContextService) {
-    var analyzer, context;
+  angular.module("synthesizer").factory("AudioAnalyserService", function($window, AudioContextService) {
+    var HEIGHT, WIDTH, analyser, canvas, context, initialized, painter, visualizer;
     context = AudioContextService.getContext();
-    analyzer = context.createAnalyser();
-    analyzer.connect(context.destination);
+    analyser = context.createAnalyser();
+    analyser.fftSize = 2048;
+    visualizer = '';
+    canvas = document.getElementById('visualizer');
+    WIDTH = canvas.clientWidth;
+    HEIGHT = canvas.clientHeight;
+    painter = canvas.getContext("2d");
+    initialized = false;
+    $window.drawOscilliscope = function() {
+      var bufferLength, i, sliceWidth, timeBuffer, x, y;
+      visualizer = requestAnimationFrame(drawOscilliscope);
+      bufferLength = analyser.frequencyBinCount;
+      timeBuffer = new Uint8Array(bufferLength);
+      analyser.getByteTimeDomainData(timeBuffer);
+      painter.fillStyle = 'rgb(255, 255, 255)';
+      painter.fillRect(0, 0, WIDTH, HEIGHT);
+      painter.lineWidth = 1;
+      painter.strokeStyle = 'rgb(100, 100, 255)';
+      painter.beginPath();
+      sliceWidth = WIDTH * 1.0 / bufferLength;
+      x = 0;
+      i = 0;
+      painter.moveTo(0, painter.height / 2);
+      while (i < bufferLength) {
+        y = timeBuffer[i] / 2;
+        if (i === 0) {
+          painter.moveTo(x, y);
+        } else {
+          painter.lineTo(x, y);
+        }
+        x += sliceWidth;
+        i++;
+      }
+      painter.lineTo(painter.width, painter.height);
+      return painter.stroke();
+    };
     return {
-      getAnalyzer: function() {
-        return analyzer;
+      getAnalyser: function() {
+        if (!this.initialized) {
+          this.initialize();
+        }
+        return analyser;
+      },
+      initialize: function() {
+        this.initialized = true;
+        return $window.drawOscilliscope();
       }
     };
   });
@@ -591,6 +729,37 @@ A simple example service that returns some data.
     return {
       getContext: function() {
         return context;
+      }
+    };
+  });
+
+}).call(this);
+
+
+/*
+A simple example service that returns some data.
+ */
+
+(function() {
+  angular.module("synthesizer").factory("BiquadService", function(AudioContextService) {
+    var context, filter;
+    context = AudioContextService.getContext();
+    filter = context.createBiquadFilter();
+    filter.type = "lowshelf";
+    filter.frequency.value = 0;
+    filter.gain.value = 0;
+    return {
+      getFilter: function() {
+        return filter;
+      },
+      setCutoff: function(cutoff) {
+        return filter.frequency.value = cutoff;
+      },
+      getCutoff: function() {
+        return filter.frequency.value;
+      },
+      setGain: function(gain) {
+        return filter.gain.value = gain;
       }
     };
   });
@@ -659,7 +828,7 @@ A simple example service that returns some data.
       };
 
       Node.prototype.sustain = function(velocity) {
-        return console.log(this.key);
+        return this.velocity += 1;
       };
 
       Node.prototype.activate = function(velocity) {
@@ -684,7 +853,6 @@ A simple example service that returns some data.
 
       IvoryNode.prototype.activate = function(velocity) {
         if (!this.active) {
-          console.log('note on' + this.key);
           OscillatorService.nodeOn(this);
         }
         return IvoryNode.__super__.activate.call(this, velocity);
@@ -707,13 +875,13 @@ A simple example service that returns some data.
       }
 
       RecordNode.prototype.activate = function(velocity) {
-        RecordNode.__super__.activate.call(this, velocity);
-        return RecordService.startRecording();
+        if (!this.active) {
+          RecordService.toggleRecording();
+        }
+        return RecordNode.__super__.activate.call(this, velocity);
       };
 
       RecordNode.prototype.silence = function(velocity) {
-        OscillatorService.nodeOff(this);
-        RecordService.startRecording();
         return RecordNode.__super__.silence.call(this);
       };
 
@@ -749,7 +917,7 @@ A simple example service that returns some data.
  */
 
 (function() {
-  angular.module("synthesizer").factory("OscillatorService", function(AudioContextService, AudioAnalyzerService) {
+  angular.module("synthesizer").factory("OscillatorService", function(AudioContextService, AudioAnalyserService) {
     var audioContext, oscillators;
     audioContext = AudioContextService.getContext();
     oscillators = [];
@@ -757,12 +925,10 @@ A simple example service that returns some data.
       initializeOscillators: function() {
         var addOscillator;
         addOscillator = function(type) {
-          var analyzer, osc;
+          var osc;
           osc = audioContext.createOscillator();
           osc.type = 'sine';
           osc.frequency.value = 0;
-          analyzer = AudioAnalyzerService.getAnalyzer();
-          osc.connect(analyzer);
           osc.start();
           return oscillators.push(osc);
         };
@@ -771,7 +937,8 @@ A simple example service that returns some data.
         addOscillator('sin');
         addOscillator('sin');
         addOscillator('sin');
-        return addOscillator('sin');
+        addOscillator('sin');
+        return oscillators;
       },
       fetchOscillator: function(node) {
         var i, len, osc;
@@ -800,27 +967,27 @@ A simple example service that returns some data.
       },
       frequencyForKey: function(key) {
         var ratioDictionary, root;
-        root = 100;
+        root = 256;
         ratioDictionary = {
           Z: 1,
-          X: 256 / 243,
-          C: 16 / 15,
+          X: 9 / 8,
+          C: 5 / 4,
           V: 10 / 9,
           B: 9 / 8,
           N: 32 / 27,
           M: 6 / 5,
-          A: 5 / 4,
-          S: 81 / 64,
-          D: 4 / 3,
+          A: 4 / 3,
+          S: 3 / 2,
+          D: 5 / 3,
           F: 27 / 20,
           G: 45 / 32,
           H: 729 / 512,
           J: 3 / 2,
           K: 128 / 81,
           L: 8 / 5,
-          Q: 5 / 3,
-          W: 27 / 16,
-          E: 16 / 9,
+          Q: 16 / 9,
+          W: 2,
+          E: 10 / 4,
           R: 9 / 5,
           T: 15 / 8,
           Y: 243 / 128,
@@ -852,13 +1019,51 @@ A simple example service that returns some data.
  */
 
 (function() {
-  angular.module("synthesizer").factory("RecordService", function() {
+  angular.module("synthesizer").factory("RecordService", function(AudioContextService, AudioAnalyserService, TrackService) {
+    var context, recorder, recording, source;
+    context = AudioContextService.getContext();
+    source = null;
+    recorder = new Recorder(AudioAnalyserService.getAnalyser());
+    recording = false;
+    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
     return {
-      startRecording: function(o) {
-        return console.log('start');
+      getLocalSource: function() {
+        if (navigator.getUserMedia) {
+          return navigator.getUserMedia({
+            audio: true
+          }, (function(stream) {
+            source = context.createMediaStreamSource(stream);
+            console.log(recorder);
+            recorder = new Recorder(AudioAnalyserService.getAnalyser());
+          }), function(err) {});
+        }
       },
-      stopRecording: function(o) {
-        return console.log('stop');
+      getSource: function() {
+        return source;
+      },
+      getRecorder: function() {
+        return recorder;
+      },
+      isRecording: function() {
+        return recording;
+      },
+      startRecording: function() {
+        recording = true;
+        return recorder.record();
+      },
+      stopRecording: function() {
+        recording = false;
+        recorder.stop();
+        return recorder.getBuffer(function(buffer) {
+          return TrackService.addTrack(buffer);
+        });
+      },
+      toggleRecording: function() {
+        if (this.isRecording()) {
+          return this.stopRecording();
+        } else {
+          return this.startRecording();
+        }
       }
     };
   });
@@ -866,14 +1071,22 @@ A simple example service that returns some data.
 }).call(this);
 
 (function() {
-  angular.module("synthesizer").controller("SynthCtrl", function($scope, $stateParams, SynthService, AudioVisualizerService) {
+  angular.module("synthesizer").controller("SynthCtrl", function($scope, $stateParams, AudioContextService, AudioAnalyserService, SynthService, BiquadService, RecordService) {
     var findNodeKey;
+    SynthService.initialize();
+    $scope.recording = RecordService.isRecording;
     $scope.nodes = SynthService.nodes;
     $scope.activateNode = function(key) {
       return SynthService.activate(key);
     };
     $scope.silenceNode = function(key) {
       return SynthService.silence(key);
+    };
+    $scope.updateCutoff = function(val) {
+      return BiquadService.setCutoff(val * 100);
+    };
+    $scope.updateGain = function(val) {
+      return BiquadService.setGain(val * 2);
     };
     $scope.keyPress = function() {
       return console.log('up');
@@ -898,6 +1111,16 @@ A simple example service that returns some data.
           return String.fromCharCode(charCode).toUpperCase();
       }
     };
+    $scope.toggleRecording = function() {
+      $scope.recording = !$scope.recording;
+      if ($scope.recording) {
+        console.log('start');
+        return RecordService.startRecording();
+      } else {
+        console.log('stop');
+        return RecordService.stopRecording();
+      }
+    };
     document.onkeydown = function(e) {
       var nodeKey;
       nodeKey = findNodeKey(e);
@@ -918,11 +1141,23 @@ A simple example service that returns some data.
  */
 
 (function() {
-  angular.module("synthesizer").factory("SynthService", function(NodeService, OscillatorService) {
-    var nodes, oscillators;
+  angular.module("synthesizer").factory("SynthService", function(NodeService, OscillatorService, RecordService, BiquadService, AudioAnalyserService, AudioContextService) {
+    var analyser, context, filter, nodes, oscillators;
     nodes = NodeService.initializeNodes();
+    context = AudioContextService.getContext();
     oscillators = OscillatorService.initializeOscillators();
+    analyser = AudioAnalyserService.getAnalyser();
+    filter = BiquadService.getFilter();
     return {
+      initialize: function() {
+        var i, len, osc;
+        for (i = 0, len = oscillators.length; i < len; i++) {
+          osc = oscillators[i];
+          osc.connect(filter);
+        }
+        filter.connect(analyser);
+        return analyser.connect(context.destination);
+      },
       activate: function(o) {
         if (typeof nodes[o] === 'undefined') {
           console.log(nodes);
@@ -965,34 +1200,34 @@ A simple example service that returns some data.
  */
 
 (function() {
-  angular.module("synthesizer").factory("TrackService", function() {
-    var Track, tracks;
-    tracks = {};
-    Track = (function() {
-      function Track(key1) {
-        this.key = key1;
-        console.log(this.key);
-      }
-
-      return Track;
-
-    })();
+  angular.module("synthesizer").factory("TrackService", function(AudioContextService, AudioAnalyserService) {
+    var context, tracks;
+    tracks = [];
+    context = AudioContextService.getContext();
     return {
-      get: function(key) {
-        if (typeof tracks[nodeKey] === 'undefined') {
-          tracks[nodeKey] = new Track(key);
-        }
-        return new Track(nodeKey);
+      addTrack: function(buffers) {
+        var newBuffer, newSource;
+        newSource = context.createBufferSource();
+        newBuffer = context.createBuffer(2, buffers[0].length, context.sampleRate);
+        newBuffer.getChannelData(0).set(buffers[0]);
+        newBuffer.getChannelData(1).set(buffers[1]);
+        newSource.buffer = newBuffer;
+        newSource.connect(AudioAnalyserService.getAnalyser());
+        newSource.start(0);
+        newSource.loop = true;
+        newSource.loopStart = 0;
+        tracks.push(newSource);
+        return console.log(tracks);
       },
-      mix: function() {
-        var key, results, track;
-        console.log('mix');
-        results = [];
-        for (track in tracks) {
-          key = tracks[track];
-          results.push(console.log(key));
+      get: function(index) {
+        if (typeof tracks[index] !== 'undefined') {
+          return new Track(nodeKey);
+        } else {
+          return console.log('no track');
         }
-        return results;
+      },
+      all: function() {
+        return tracks;
       }
     };
   });
@@ -1005,10 +1240,10 @@ A simple example service that returns some data.
  */
 
 (function() {
-  angular.module("synthesizer").factory("AudioVisualizerService", function(AudioAnalyzerService, $window) {
+  angular.module("synthesizer").factory("AudioVisualizerService", function(AudioAnalyserService, $window) {
     var analyser, canvas, canvasCtx, drawFrame;
     canvas = $window.document.querySelector('.oscilloscope');
-    analyser = AudioAnalyzerService.getAnalyzer();
+    analyser = AudioAnalyserService.getanalyser();
     canvasCtx = canvas.getContext('2d');
     return drawFrame = function() {
       var HEIGHT, WIDTH, drawVisual, i, sliceWidth, v, x, y;
