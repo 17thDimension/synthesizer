@@ -3,7 +3,7 @@ A simple example service that returns some data.
 ###
 angular.module("synthesizer")
 
-.factory "OscillatorService", (AudioContextService,AudioAnalyzerService)->
+.factory "OscillatorService", (AudioContextService,AudioAnalyserService)->
   audioContext=AudioContextService.getContext()
   oscillators=[]
   initializeOscillators:()->
@@ -36,27 +36,27 @@ angular.module("synthesizer")
     osc.frequency.value=0
     delete osc.originNode
   frequencyForKey: (key)->
-    root=100
+    root=256
     ratioDictionary=
-      Z: 1
-      X: 256/243
-      C: 16/15
-      V: 10/9
+      Z: 1 #c
+      X: 9/8 #d
+      C: 5/4 #e
+      V: 10/9 #f
       B: 9/8
       N: 32/27
       M: 6/5
-      A: 5/4
-      S: 81/64
-      D: 4/3
+      A: 4/3
+      S: 3/2
+      D: 5/3
       F: 27/20
       G: 45/32
       H: 729/512
       J: 3/2
       K: 128/81
       L: 8/5
-      Q: 5/3
-      W: 27/16
-      E: 16/9
+      Q: 16/9 #Bb
+      W: 2
+      E: 10/4
       R: 9/5
       T: 15/8
       Y: 243/128

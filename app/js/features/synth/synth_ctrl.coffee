@@ -2,12 +2,11 @@ angular.module("synthesizer")
 
 # A simple controller that shows a tapped item's data
 .controller "SynthCtrl", ($scope,$stateParams
-    ,AudioContextService,
+    ,AudioContextService,AudioAnalyserService
     SynthService,BiquadService,RecordService) ->
 
   SynthService.initialize()
   $scope.recording= RecordService.isRecording
-
   $scope.nodes=SynthService.nodes
 
   $scope.activateNode= (key)->

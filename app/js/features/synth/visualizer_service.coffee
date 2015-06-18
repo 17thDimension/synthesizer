@@ -3,9 +3,9 @@ A simple example service that returns some data.
 ###
 angular.module("synthesizer")
 
-.factory "AudioVisualizerService",(AudioAnalyzerService,$window) ->
+.factory "AudioVisualizerService",(AudioAnalyserService,$window) ->
   canvas = $window.document.querySelector('.oscilloscope')
-  analyser = AudioAnalyzerService.getAnalyzer()
+  analyser = AudioAnalyserService.getanalyser()
   canvasCtx = canvas.getContext('2d')
   drawFrame = () ->
     WIDTH=$window.getClientWidth()

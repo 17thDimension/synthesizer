@@ -17,7 +17,7 @@ angular.module("synthesizer")
     silence: (velocity) ->
       @active=no
     sustain: (velocity) ->
-      console.log(@key)
+      @velocity+=1
     activate: (velocity) ->
       if @active
         @sustain(velocity)

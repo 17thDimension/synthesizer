@@ -8,8 +8,8 @@ angular.module("synthesizer")
   context = AudioContextService.getContext()
   filter = context.createBiquadFilter()
   filter.type = "lowshelf"
-  filter.frequency.value = 1000
-  filter.gain.value = 25
+  filter.frequency.value = 0
+  filter.gain.value = 0
   getFilter: () ->
     return filter
   setCutoff: (cutoff) ->
