@@ -1623,7 +1623,7 @@ A simple example service that returns some data.
         }
       }
     });
-    return $urlRouterProvider.otherwise("/app/info");
+    return $urlRouterProvider.otherwise("/app/synth");
   });
 
 }).call(this);
