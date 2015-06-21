@@ -35,7 +35,7 @@ angular.module("synthesizer")
         templateUrl: "templates/synth.html"
         controller: "SynthCtrl"
 
-  .state "info",
+  .state "app.info",
     url: "/info"
     views:
       "main-content":
@@ -43,4 +43,4 @@ angular.module("synthesizer")
 
 
   # if none of the above states are matched, use this as the fallback
-  $urlRouterProvider.otherwise "/app/synth"
+  $urlRouterProvider.otherwise "/app/info"

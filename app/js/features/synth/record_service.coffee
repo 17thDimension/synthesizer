@@ -3,27 +3,50 @@ A simple example service that returns some data.
 ###
 angular.module("synthesizer")
 
-.factory "RecordService",(AudioContextService,
-  AudioAnalyserService,TrackService) ->
+.factory "RecordService",($rootScope,AudioContextService,
+  AudioAnalyserService,GainService,TrackService) ->
   context=AudioContextService.getContext()
-  source = null
-  recorder = new Recorder(AudioAnalyserService.getAnalyser())
+  source = 'output'
+  analyser = AudioAnalyserService.getAnalyser()
+  sourceStream = GainService.getGain()
+  inputGain = GainService.getGain('input')
+  localStream = null
+  recorder = new Recorder(sourceStream)
   recording = false
+  userMediaStream = null
+  service=@
   navigator.getUserMedia = navigator.getUserMedia or
     navigator.webkitGetUserMedia or
     navigator.mozGetUserMedia or
     navigator.msGetUserMedia
 
-  getLocalSource:()->
+  $rootScope.$on 'stateChanged', ($scope,state)->
+    self=service.$get()
+    if state == 'sampler'
+      self.setSource('input')
+    else
+      self.setSource('output')
+  getLocalSource:()-> #convert this ot a promise
     if navigator.getUserMedia
       navigator.getUserMedia { audio: true }, ((stream) ->
-        source = context.createMediaStreamSource(stream)
-        console.log recorder
-        recorder = new Recorder(AudioAnalyserService.getAnalyser())
-
+        sourceStream = context.createMediaStreamSource(stream)
+        gain=GainService.getGain('input')
+        sourceStream.connect gain
+        gain.connect analyser
+        recorder.destroy()
+        recorder = new Recorder(gain)
         return
       ), (err) ->
         return
+
+  setSource:(src)->
+    source=src
+    if src  == 'output'
+      recorder.destroy()
+      sourceStream = GainService.getGain()
+      recorder = new Recorder(sourceStream)
+    if src  == 'input'
+      @getLocalSource()
 
 
   getSource:()->
@@ -33,15 +56,17 @@ angular.module("synthesizer")
   isRecording:()->
     recording
   startRecording: () ->
-    recording= yes
+    recording = yes
     recorder.record()
-  stopRecording: () ->
+
+  stopRecording: (callback) ->
     recording= no
     recorder.stop()
     recorder.getBuffer (buffer) ->
-      TrackService.addTrack buffer
-  toggleRecording: () ->
+      callback(buffer)
+      recorder.clear()
+  toggleRecording: (callback) ->
     if @isRecording()
-      @stopRecording()
+      @stopRecording(callback)
     else
       @startRecording()

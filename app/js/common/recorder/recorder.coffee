@@ -62,7 +62,10 @@ do (window) ->
         command: 'exportWAV'
         type: type
       return
-
+    @destroy = ()->
+      worker.terminate()
+      console.log(worker)
+      delete @
     worker.onmessage = (e) ->
       blob = e.data
       currCallback blob

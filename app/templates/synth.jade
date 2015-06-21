@@ -11,30 +11,32 @@ html
             .col .
           .row
             .col
+            .col-50
+              .row(ng-repeat='track in tracks')
+                .col {{track.getSampleTime()}} 
+                  //- input(type="range")
+                  //- .col
+                  //-   .ion-fireball.icon.button.button-icon
+                  //- .col
+                  //-   input(type="range")
+                  //- .col
+                  //-   .ion-leaf.icon.button.button-icon
+                  //- .col
+                  //-   input(type="range") 
+                  //- .col
+                  //-   .icon.button.button-icon.ion-waterdrop
+                  //- .col
+                  //-   input(type="range")
+                   .col
+                   .icon.button.button-icon.ion-wand
             .col
-              input(type="range")
+              .icon.button.button-icon.ion-mic-wand
             .col
-              .ion-fireball.icon.button.button-icon
+              input(type="range",min='0',max='1',ng-change="updateGain(inputVolume,'input')",ng-model='inputVolume')
             .col
-              input(type="range")
-            .col
-              .ion-leaf.icon.button.button-icon
-            .col
-              input(type="range") 
-            .col
-              .icon.button.button-icon.ion-waterdrop
-            .col
-              input(type="range")
-            .col
-              .icon.button.button-icon.ion-wand
-            .col
-              input(type="range",ng-change="updateGain(g)",ng-model='g')
-            .col
-              .icon.button.button-icon.ion-magnet
+              input(type="range",ng-change="updateGain(outputVolume,'output')",ng-model='outputVolume')
             .col
               input(type="range",ng-change="updateCutoff(ct)",ng-model='ct')
-            .col
-              .icon.button.button-icon.ion-earth
             .col
               input(type="range") 
             .col
@@ -42,7 +44,7 @@ html
             .col
 
           .row
-            .col .
+            .col {{getState()}}
           .row.wave-form
             canvas#visualizer.col(width='1200',height='200')
           .row
@@ -69,4 +71,4 @@ html
           .row
             .col .
           .row
-            .col.icon.button.button-icon.ion-mic-c
+            .col.icon.button.button-icon.ion-mic-c(ng-click='toggleRecording()',ng-class='sampling()?"blue":""')

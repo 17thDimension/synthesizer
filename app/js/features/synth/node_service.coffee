@@ -8,7 +8,10 @@ angular.module("synthesizer")
   TimeService,
   RecordService,
   TrackService,
-  LoopService ) ->
+  ShiftService,
+  StateService,
+  AudioAnalyserService,
+  LoopService) ->
 
   class Node
 
@@ -38,6 +41,21 @@ angular.module("synthesizer")
     silence:(velocity)->
       OscillatorService.nodeOff @
       super()
+
+  class ShiftNode extends Node
+
+    constructor:() ->
+      super('shift')
+
+    activate:(velocity)->
+      if !@active
+        ShiftService.shift()
+      super(velocity)
+
+    silence:(velocity)->
+      ShiftService.unShift()
+      super()
+
   class RecordNode extends Node
 
     constructor:(@key) ->
@@ -45,25 +63,84 @@ angular.module("synthesizer")
 
     activate:(velocity)->
       if !@active
-        RecordService.toggleRecording()
+        RecordService.toggleRecording (buffer)->
+          TrackService.addTrack buffer
       super(velocity)
 
     silence:(velocity)->
+      super()
+  class StateToggleNode extends Node
+
+    constructor:(@key,@state) ->
+      super(@key)
+
+    activate:(velocity)->
+      if !@active
+        StateService.toggleState (@state)
+      super(velocity)
+
+    silence:(velocity)->
+      super()
+
+  class SampleNode extends Node
+
+    constructor:(@key) ->
+      super(@key)
+
+    activate:(velocity)->
+      if ShiftService.isShifted() and !@active
+        console.log('start sample')
+        RecordService.startRecording()
+      else if !@active
+        console.log 'playSample'
+        console.log @stream
+        if _.defined @stream
+          @stream.play 0
+      super(velocity)
+
+
+    silence:(velocity)->
+      if ShiftService.isShifted()
+        node=@
+        console.log('stop sample')
+        RecordService.stopRecording (buffer)->
+          node.stream=TrackService.audioStreamFromBuffer buffer
+          node.stream.connect AudioAnalyserService.getAnalyser()
       super()
 
 
   ivory_keys="abcdefghijklmnopqrstuvwxyz1234567890"
   control_keys = ",./;[]`-='← → ↑ ↓"
   record_key = " "
+  nodes={}
   initializeNodes : () ->
-    nodes={}
+    for state in StateService.all()
+      nodes[state]={}
+    defaultState=StateService.getDefaultState()
     for key in ivory_keys.toUpperCase().split('')
-      nodes[key] = new IvoryNode(
+      nodes[defaultState][key] = new IvoryNode(
         key,
         OscillatorService.frequencyForKey key
       )
+      nodes['sampler'][key] = new SampleNode(
+        key
+      )
 
-    nodes[record_key]=new RecordNode(record_key)
+    nodes[defaultState][record_key]=new RecordNode(record_key)
+    nodes[defaultState]['shift']= new ShiftNode()
+    nodes[defaultState]['command']= new StateToggleNode('command','sampler')
     nodes
+
+  activate:(key)->
+    @nodeForKey(key).activate()
+  silence:(key) ->
+    @nodeForKey(key).silence()
   nodeForKey: (key)->
-    return @nodes[key]
+    node= nodes[StateService.getState()][key]
+    if !_.defined node
+      node = nodes[StateService.getDefaultState()][key]
+    node
+  getfirstActiveNodeKey:()->
+    for node in nodes
+      if node.active
+        return node
