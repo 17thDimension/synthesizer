@@ -256,17 +256,6 @@
 }).call(this);
 
 (function() {
-  angular.module("synthesizer").directive('synthNode', function() {
-    return {
-      restrict: 'A',
-      require: '^o-key',
-      template: '<div>aksjdnakjsndkjn</div>'
-    };
-  });
-
-}).call(this);
-
-(function() {
   angular.module("synthesizer").factory('FormFactory', function($q) {
 
     /*
@@ -428,6 +417,17 @@
         }
         return deferred.promise;
       }
+    };
+  });
+
+}).call(this);
+
+(function() {
+  angular.module("synthesizer").directive('synthNode', function() {
+    return {
+      restrict: 'A',
+      require: '^o-key',
+      template: '<div>aksjdnakjsndkjn</div>'
     };
   });
 
@@ -1623,7 +1623,7 @@ A simple example service that returns some data.
         }
       }
     });
-    return $urlRouterProvider.otherwise("/app/synth");
+    return $urlRouterProvider.otherwise("/app/info");
   });
 
 }).call(this);
