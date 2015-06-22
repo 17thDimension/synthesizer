@@ -256,6 +256,17 @@
 }).call(this);
 
 (function() {
+  angular.module("synthesizer").directive('synthNode', function() {
+    return {
+      restrict: 'A',
+      require: '^o-key',
+      template: '<div>aksjdnakjsndkjn</div>'
+    };
+  });
+
+}).call(this);
+
+(function() {
   angular.module("synthesizer").factory('FormFactory', function($q) {
 
     /*
@@ -417,17 +428,6 @@
         }
         return deferred.promise;
       }
-    };
-  });
-
-}).call(this);
-
-(function() {
-  angular.module("synthesizer").directive('synthNode', function() {
-    return {
-      restrict: 'A',
-      require: '^o-key',
-      template: '<div>aksjdnakjsndkjn</div>'
     };
   });
 
@@ -853,34 +853,63 @@ A simple example service that returns some data.
  */
 
 (function() {
-  angular.module("synthesizer").factory("LoopService", function() {
-    var Node, nodes;
-    nodes = {};
-    Node = (function() {
-      function Node(key) {
-        this.key = key;
-      }
-
-      Node.prototype.silence = function(velocity) {
-        return console.log(velocity);
-      };
-
-      Node.prototype.activate = function(velocity) {
-        return console.log(velocity);
-      };
-
-      return Node;
-
-    })();
+  angular.module("synthesizer").factory("HudService", function($window, TrackService) {
+    var context, hud;
+    hud = $window.document.getElementById('hud');
+    context = hud.getContext('2d');
     return {
-      all: function() {
-        return [];
+      paint: function() {
+        var HEIGHT, WIDTH, dataArray, i, index, j, len, sliceWidth, track, tracks, v, x, y;
+        WIDTH = 1000;
+        HEIGHT = 108;
+        tracks = TrackService.getTracks();
+        context.fillStyle = 'rgb(255, 255, 255)';
+        context.fillRect(0, 0, WIDTH, HEIGHT);
+        context.lineWidth = 1;
+        context.strokeStyle = 'rgb(0, 0, 0)';
+        context.beginPath();
+        for (index = j = 0, len = tracks.length; j < len; index = ++j) {
+          track = tracks[index];
+          dataArray = track.buffer.getChannelData(0);
+          sliceWidth = WIDTH / dataArray.length;
+          x = 0;
+          i = 0;
+          while (i < dataArray.length) {
+            v = dataArray[i];
+            y = v + index * HEIGHT / tracks.lenght;
+            if (i === 0) {
+              context.moveTo(x, y);
+            } else {
+              context.lineTo(x, y);
+            }
+            x += sliceWidth;
+            i++;
+          }
+          context.lineTo(hud.width, hud.height / index);
+        }
+        return context.stroke();
+      }
+    };
+  });
+
+}).call(this);
+
+
+/*
+A simple example service that returns some data.
+ */
+
+(function() {
+  angular.module("synthesizer").factory("LoopService", function() {
+    var instantLoop;
+    instantLoop = true;
+    return {
+      toggleInstantLoop: function() {
+        return instantLoop = !instantLoop;
       },
-      nodeForKey: function(nodeKey) {
-        return new Node(nodeKey);
-      },
-      silence: function(nodeKey) {
-        return node[patchId].silence();
+      instantLoopEnabled: function() {
+        console.log('get');
+        return instantLoop;
       }
     };
   });
@@ -896,8 +925,8 @@ A simple example service that returns some data.
   var extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
     hasProp = {}.hasOwnProperty;
 
-  angular.module("synthesizer").factory("NodeService", function(OscillatorService, TimeService, RecordService, TrackService, ShiftService, StateService, AudioAnalyserService, LoopService) {
-    var IvoryNode, Node, RecordNode, SampleNode, ShiftNode, StateToggleNode, control_keys, ivory_keys, nodes, record_key;
+  angular.module("synthesizer").factory("NodeService", function(OscillatorService, TimeService, RecordService, TrackService, ShiftService, StateService, AudioAnalyserService, HudService, LoopService) {
+    var IvoryNode, Node, RecordNode, RootModifierNode, SampleNode, ShiftNode, StateToggleNode, control_keys, ivory_keys, nodes, record_key;
     Node = (function() {
       function Node(key1) {
         this.key = key1;
@@ -947,6 +976,31 @@ A simple example service that returns some data.
       return IvoryNode;
 
     })(Node);
+    RootModifierNode = (function(superClass) {
+      extend(RootModifierNode, superClass);
+
+      function RootModifierNode(key1, multiplier) {
+        this.key = key1;
+        this.multiplier = multiplier;
+        RootModifierNode.__super__.constructor.call(this, this.key);
+      }
+
+      RootModifierNode.prototype.activate = function(velocity) {
+        var newRoot;
+        if (!this.active) {
+          newRoot = OscillatorService.getRootFrequency() * this.multiplier;
+          OscillatorService.setRootFrequency(newRoot);
+        }
+        return RootModifierNode.__super__.activate.call(this, velocity);
+      };
+
+      RootModifierNode.prototype.silence = function(velocity) {
+        return RootModifierNode.__super__.silence.call(this);
+      };
+
+      return RootModifierNode;
+
+    })(Node);
     ShiftNode = (function(superClass) {
       extend(ShiftNode, superClass);
 
@@ -980,7 +1034,8 @@ A simple example service that returns some data.
       RecordNode.prototype.activate = function(velocity) {
         if (!this.active) {
           RecordService.toggleRecording(function(buffer) {
-            return TrackService.addTrack(buffer);
+            TrackService.addTrack(buffer, LoopService.instantLoopEnabled);
+            return HudService.paint();
           });
         }
         return RecordNode.__super__.activate.call(this, velocity);
@@ -1042,7 +1097,6 @@ A simple example service that returns some data.
         var node;
         if (ShiftService.isShifted()) {
           node = this;
-          console.log('stop sample');
           RecordService.stopRecording(function(buffer) {
             node.stream = TrackService.audioStreamFromBuffer(buffer);
             return node.stream.connect(AudioAnalyserService.getAnalyser());
@@ -1055,7 +1109,7 @@ A simple example service that returns some data.
 
     })(Node);
     ivory_keys = "abcdefghijklmnopqrstuvwxyz1234567890";
-    control_keys = ",./;[]`-='← → ↑ ↓";
+    control_keys = ",./;`-='← → ↑ ↓";
     record_key = " ";
     nodes = {};
     return {
@@ -1074,8 +1128,10 @@ A simple example service that returns some data.
           nodes['sampler'][key] = new SampleNode(key);
         }
         nodes[defaultState][record_key] = new RecordNode(record_key);
+        nodes[defaultState]['['] = new RootModifierNode('[', .5);
+        nodes[defaultState][']'] = new RootModifierNode(']', 2);
         nodes[defaultState]['shift'] = new ShiftNode();
-        nodes[defaultState]['command'] = new StateToggleNode('command', 'sampler');
+        nodes[defaultState]['control'] = new StateToggleNode('command', 'sampler');
         return nodes;
       },
       activate: function(key) {
@@ -1113,26 +1169,33 @@ A simple example service that returns some data.
 
 (function() {
   angular.module("synthesizer").factory("OscillatorService", function(AudioContextService, AudioAnalyserService) {
-    var audioContext, oscillators;
+    var audioContext, oscillators, rootFrequency;
     audioContext = AudioContextService.getContext();
     oscillators = [];
+    rootFrequency = 256;
     return {
+      getRootFrequency: function() {
+        return rootFrequency;
+      },
+      setRootFrequency: function(newFrequency) {
+        return rootFrequency = newFrequency;
+      },
       initializeOscillators: function() {
         var addOscillator;
         addOscillator = function(type) {
           var osc;
           osc = audioContext.createOscillator();
-          osc.type = 'sine';
+          osc.type = type;
           osc.frequency.value = 0;
           osc.start();
           return oscillators.push(osc);
         };
-        addOscillator('sin');
-        addOscillator('sin');
-        addOscillator('sin');
-        addOscillator('sin');
-        addOscillator('sin');
-        addOscillator('sin');
+        addOscillator('sine');
+        addOscillator('triangle');
+        addOscillator('sine');
+        addOscillator('triangle');
+        addOscillator('square');
+        addOscillator('square');
         return oscillators;
       },
       fetchOscillator: function(node) {
@@ -1152,7 +1215,7 @@ A simple example service that returns some data.
         var osc;
         osc = this.fetchOscillator(node);
         osc.originNode = node;
-        return osc.frequency.value = node.frequency;
+        return osc.frequency.value = node.frequency * rootFrequency;
       },
       nodeOff: function(node) {
         var osc;
@@ -1161,8 +1224,7 @@ A simple example service that returns some data.
         return delete osc.originNode;
       },
       frequencyForKey: function(key) {
-        var ratioDictionary, root;
-        root = 256;
+        var ratioDictionary;
         ratioDictionary = {
           Z: 1,
           X: 9 / 8,
@@ -1190,10 +1252,10 @@ A simple example service that returns some data.
           I: 20 / 9,
           O: 42 / 7,
           P: 42 / 7,
-          1: 42 / 7,
-          2: 42 / 7,
-          3: 42 / 7,
-          4: 42 / 7,
+          1: 1 / 7,
+          2: 2 / 7,
+          3: 3 / 7,
+          4: 4 / 7,
           5: 42 / 7,
           6: 42 / 7,
           7: 42 / 7,
@@ -1201,7 +1263,7 @@ A simple example service that returns some data.
           9: 42 / 7,
           0: 42 / 7
         };
-        return root * ratioDictionary[key];
+        return ratioDictionary[key];
       }
     };
   });
@@ -1219,7 +1281,7 @@ A simple example service that returns some data.
     context = AudioContextService.getContext();
     source = 'output';
     analyser = AudioAnalyserService.getAnalyser();
-    sourceStream = GainService.getGain();
+    sourceStream = GainService.getGain('output');
     inputGain = GainService.getGain('input');
     localStream = null;
     recorder = new Recorder(sourceStream);
@@ -1372,7 +1434,7 @@ A simple example service that returns some data.
 }).call(this);
 
 (function() {
-  angular.module("synthesizer").controller("SynthCtrl", function($scope, $stateParams, AudioContextService, AudioAnalyserService, SynthService, BiquadService, RecordService, StateService, TrackService, NodeService, GainService) {
+  angular.module("synthesizer").controller("SynthCtrl", function($scope, $stateParams, AudioContextService, AudioAnalyserService, SynthService, BiquadService, RecordService, StateService, TrackService, NodeService, OscillatorService, GainService, LoopService) {
     var findNodeKey;
     SynthService.initialize();
     $scope.context = AudioContextService.getContext();
@@ -1380,6 +1442,9 @@ A simple example service that returns some data.
     $scope.nodes = SynthService.nodes;
     $scope.tracks = TrackService.getTracks();
     $scope.getState = StateService.getState;
+    $scope.rootFrequency = OscillatorService.getRootFrequency();
+    $scope.setRootFrequency = OscillatorService.setRootFrequency;
+    $scope.getRootFrequency = OscillatorService.getRootFrequency;
     $scope.activateNode = function(key) {
       return NodeService.activate(key);
     };
@@ -1413,6 +1478,10 @@ A simple example service that returns some data.
           return '→';
         case charCode !== 40:
           return '↓';
+        case charCode !== 219:
+          return '[';
+        case charCode !== 221:
+          return ']';
         default:
           return String.fromCharCode(charCode).toUpperCase();
       }
@@ -1420,13 +1489,24 @@ A simple example service that returns some data.
     $scope.toggleSamplerMode = function() {
       return StateService.toggleState('sampler');
     };
+    $scope.toggleSamplerMode = function() {
+      return StateService.toggleState('sampler');
+    };
+    $scope.toggleInstantLoop = function() {
+      return LoopService.toggleInstantLoop();
+    };
+    $scope.instantLoopEnabled = function() {
+      return LoopService.instantLoopEnabled();
+    };
     $scope.toggleRecording = function() {
       $scope.recording = !$scope.recording;
       if ($scope.recording) {
         return RecordService.startRecording();
       } else {
         return RecordService.stopRecording(function(buffer) {
-          return TrackService.addTrack(buffer);
+          console.log('new_track');
+          TrackService.addTrack(buffer, LoopService.instantLoopEnabled);
+          return HudService.paint();
         });
       }
     };
@@ -1514,12 +1594,12 @@ A simple example service that returns some data.
         newSource.buffer = newBuffer;
         return newSource;
       },
-      addTrack: function(buffers) {
+      addTrack: function(buffers, instantLoop) {
         var newSource, test;
         newSource = this.audioStreamFromBuffer(buffers);
         newSource.connect(AudioAnalyserService.getAnalyser());
         test = newSource.start(0);
-        newSource.loop = true;
+        newSource.loop = instantLoop;
         newSource.loopStart = 0;
         return tracks.push(newSource);
       },
