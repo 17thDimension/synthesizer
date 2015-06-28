@@ -11,6 +11,7 @@ angular.module("synthesizer")
   ShiftService,
   StateService,
   AudioAnalyserService,
+  HudService,
   LoopService) ->
 
   class Node
@@ -41,6 +42,19 @@ angular.module("synthesizer")
     silence:(velocity)->
       OscillatorService.nodeOff @
       super()
+  class RootModifierNode extends Node
+    constructor:(@key,@multiplier) ->
+      super(@key)
+
+    activate:(velocity)->
+      if !@active
+        newRoot=OscillatorService.getRootFrequency()*@multiplier
+        OscillatorService.setRootFrequency newRoot
+      super(velocity)
+
+    silence:(velocity)->
+      super()
+
 
   class ShiftNode extends Node
 
@@ -64,7 +78,10 @@ angular.module("synthesizer")
     activate:(velocity)->
       if !@active
         RecordService.toggleRecording (buffer)->
-          TrackService.addTrack buffer
+          TrackService.addTrack buffer,LoopService.instantLoopEnabled
+          HudService.paint()
+
+
       super(velocity)
 
     silence:(velocity)->
@@ -102,7 +119,6 @@ angular.module("synthesizer")
     silence:(velocity)->
       if ShiftService.isShifted()
         node=@
-        console.log('stop sample')
         RecordService.stopRecording (buffer)->
           node.stream=TrackService.audioStreamFromBuffer buffer
           node.stream.connect AudioAnalyserService.getAnalyser()
@@ -110,7 +126,7 @@ angular.module("synthesizer")
 
 
   ivory_keys="abcdefghijklmnopqrstuvwxyz1234567890"
-  control_keys = ",./;[]`-='← → ↑ ↓"
+  control_keys = ",./;`-='← → ↑ ↓"
   record_key = " "
   nodes={}
   initializeNodes : () ->
@@ -118,7 +134,7 @@ angular.module("synthesizer")
       nodes[state]={}
     defaultState=StateService.getDefaultState()
     for key in ivory_keys.toUpperCase().split('')
-      nodes[defaultState][key] = new IvoryNode(
+      nodes['keys'][key] = new IvoryNode(
         key,
         OscillatorService.frequencyForKey key
       )
@@ -126,9 +142,11 @@ angular.module("synthesizer")
         key
       )
 
-    nodes[defaultState][record_key]=new RecordNode(record_key)
-    nodes[defaultState]['shift']= new ShiftNode()
-    nodes[defaultState]['command']= new StateToggleNode('command','sampler')
+    nodes['keys'][record_key]=new RecordNode(record_key)
+    nodes['keys']['['] = new RootModifierNode('[',.5)
+    nodes['keys'][']'] = new RootModifierNode(']',2)
+    nodes['keys']['shift']= new ShiftNode()
+    nodes['keys']['control']= new StateToggleNode('control','sampler')
     nodes
 
   activate:(key)->

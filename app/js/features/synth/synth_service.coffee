@@ -5,18 +5,27 @@ angular.module("synthesizer")
 
 .factory "SynthService",(NodeService, OscillatorService, RecordService,
                 BiquadService,AudioAnalyserService,GainService,
-                AudioContextService) ->
+                AudioContextService,UserMediaService,ReverbService) ->
   nodes = NodeService.initializeNodes()
 
   context = AudioContextService.getContext()
   oscillators = OscillatorService.initializeOscillators()
-  analyser = AudioAnalyserService.getAnalyser()
+  inputAnalyser = AudioAnalyserService.getAnalyser('input')
+  outputAnalyser = AudioAnalyserService.getAnalyser('output')
   filter = BiquadService.getFilter()
-  gain = GainService.getGain()
+  reverb = ReverbService.getReverb()
+  outputGain = GainService.getGain('output')
+  inputGain = GainService.getGain('input')
+  userMediaGain = GainService.getGain('user-media')
 
   initialize:() ->
+    UserMediaService.initialize()
     for osc in oscillators
-      osc.connect filter
-    filter.connect analyser
-    analyser.connect gain
-    gain.connect context.destination
+      osc.connect osc.vol
+      osc.vol.connect inputGain
+    userMediaGain.connect inputGain
+    inputGain.connect inputAnalyser
+    inputAnalyser.connect filter
+    filter.connect outputGain
+    outputGain.connect outputAnalyser
+    outputAnalyser.connect context.destination

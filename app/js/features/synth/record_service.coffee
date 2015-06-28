@@ -3,52 +3,33 @@ A simple example service that returns some data.
 ###
 angular.module("synthesizer")
 
-.factory "RecordService",($rootScope,AudioContextService,
+.factory "RecordService",($window,$rootScope,AudioContextService,
   AudioAnalyserService,GainService,TrackService) ->
   context=AudioContextService.getContext()
   source = 'output'
-  analyser = AudioAnalyserService.getAnalyser()
-  sourceStream = GainService.getGain()
+  outputAnalyser = AudioAnalyserService.getAnalyser('output')
+  inputAnalyser = AudioAnalyserService.getAnalyser('input')
+  sourceStream = GainService.getGain('output')
   inputGain = GainService.getGain('input')
-  localStream = null
   recorder = new Recorder(sourceStream)
   recording = false
-  userMediaStream = null
   service=@
-  navigator.getUserMedia = navigator.getUserMedia or
-    navigator.webkitGetUserMedia or
-    navigator.mozGetUserMedia or
-    navigator.msGetUserMedia
-
-  $rootScope.$on 'stateChanged', ($scope,state)->
-    self=service.$get()
+  updateState:(state)->
+    console.log(@)
     if state == 'sampler'
-      self.setSource('input')
+      @setSource('input')
     else
-      self.setSource('output')
-  getLocalSource:()-> #convert this ot a promise
-    if navigator.getUserMedia
-      navigator.getUserMedia { audio: true }, ((stream) ->
-        sourceStream = context.createMediaStreamSource(stream)
-        gain=GainService.getGain('input')
-        sourceStream.connect gain
-        gain.connect analyser
-        recorder.destroy()
-        recorder = new Recorder(gain)
-        return
-      ), (err) ->
-        return
-
+      @setSource('output')
   setSource:(src)->
+    console.log(@,src)
     source=src
-    if src  == 'output'
-      recorder.destroy()
-      sourceStream = GainService.getGain()
-      recorder = new Recorder(sourceStream)
     if src  == 'input'
-      @getLocalSource()
+      GainService.setVolume(1,'user-media')
+    else
+      GainService.setVolume(0,'user-media')
 
-
+  getMediaStream:()->
+    $window.userMediaStream
   getSource:()->
     source
   getRecorder:()->

@@ -3,14 +3,12 @@ A simple example service that returns some data.
 ###
 angular.module("synthesizer")
 
-.factory "StateService",($rootScope) ->
+.factory "StateService",($rootScope,RecordService) ->
   defaultState = 'keys'
   state = defaultState
   states =['keys','sampler','sequencer','editor']
   stateHistory=[]
   toggleState:(requestedState) ->
-    console.trace()
-    console.log 'toggle' + requestedState
     if state==requestedState
       @setState stateHistory.pop()
     else
@@ -23,6 +21,5 @@ angular.module("synthesizer")
   all:()->
     states
   setState:(newState)->
-    console.log newState
-    $rootScope.$broadcast 'stateChanged', newState
+    RecordService.updateState(newState)
     state=newState

@@ -12,33 +12,23 @@ html
           .row
             .col
             .col-50
-              .row(ng-repeat='track in tracks')
-                .col {{track.getSampleTime()}} 
-                  //- input(type="range")
-                  //- .col
-                  //-   .ion-fireball.icon.button.button-icon
-                  //- .col
-                  //-   input(type="range")
-                  //- .col
-                  //-   .ion-leaf.icon.button.button-icon
-                  //- .col
-                  //-   input(type="range") 
-                  //- .col
-                  //-   .icon.button.button-icon.ion-waterdrop
-                  //- .col
-                  //-   input(type="range")
-                   .col
-                   .icon.button.button-icon.ion-wand
+              canvas#hud.col(width='500px',height='108px')
             .col
               .icon.button.button-icon.ion-mic-wand
+              select(ng-model='filterType',ng-change='setFilterType(filterType)')
+                option(ng-repeat='filterMode in filter.getFilterModes()',ng-value='filterMode') {{filterMode}}
             .col
-              input(type="range",min='0',max='1',ng-change="updateGain(inputVolume,'input')",ng-model='inputVolume')
+              input(type="range",min='0',max='1',step ="0.01",ng-change="updateGain(outputVolume,'output')",ng-model='outputVolume')
             .col
-              input(type="range",ng-change="updateGain(outputVolume,'output')",ng-model='outputVolume')
-            .col
-              input(type="range",ng-change="updateCutoff(ct)",ng-model='ct')
-            .col
-              input(type="range") 
+              input(type="range",min='0',max='1',step ="0.01",ng-change="updateGain(inputVolume,'input')",ng-model='inputVolume')
+            .col(ng-show='filter.supports("Q")')
+              input(type="range",min='0',max='2000',ng-change="filter.setQ(q)",ng-model='q')
+            .col(ng-show='filter.supports("gain")')
+              input(type="range",min='0',max='200',ng-change="filter.setGain(g)",ng-model='g')
+            .col(ng-show='filter.supports("detune")')
+              input(type="range",min='0',max='2000',ng-change="filter.setDetune(d)",ng-model='d')
+            .col(ng-show='filter.supports("frequency")')
+              input(type="range",min='0',max='1000',ng-change="filter.setFrequency(f)",ng-model='f')
             .col
               .icon.button.button-icon.ion-planet
             .col
@@ -46,7 +36,8 @@ html
           .row
             .col {{getState()}}
           .row.wave-form
-            canvas#visualizer.col(width='1200',height='200')
+            canvas#inputWaveForm.col(width='600',height='200')
+            canvas#outputWaveForm.col(width='600',height='200')
           .row
           .row
             .col.icon.button.button-icon.ion-more
@@ -71,4 +62,7 @@ html
           .row
             .col .
           .row
+            .col
+              input(ng-model='rootFrequency',ng-change='setRootFrequency(rootFrequency)',type='number')
             .col.icon.button.button-icon.ion-mic-c(ng-click='toggleRecording()',ng-class='sampling()?"blue":""')
+            .col.icon.button.button-icon.ion-refresh(ng-click='toggleInstantLoop()',ng-class='instantLoopEnabled()?"blue":""')

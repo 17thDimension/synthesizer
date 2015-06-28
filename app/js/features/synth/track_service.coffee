@@ -14,11 +14,11 @@ angular.module("synthesizer")
     newBuffer.getChannelData(1).set buffers[1]
     newSource.buffer = newBuffer
     newSource
-  addTrack:(buffers)->
+  addTrack:(buffers,instantLoop)->
     newSource = @audioStreamFromBuffer(buffers)
     newSource.connect AudioAnalyserService.getAnalyser()
     test=newSource.start 0
-    newSource.loop = yes
+    newSource.loop = instantLoop
     newSource.loopStart=0
     tracks.push newSource
   getTracks:()->

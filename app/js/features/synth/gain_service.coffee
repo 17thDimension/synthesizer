@@ -17,7 +17,12 @@ angular.module("synthesizer")
   getGain:(destination)->
     if not _.defined destination
       destination = 'output'
+    if not _.defined gainNodes[destination]
+      return @createGain(destination)
     gainNodes[destination]
+  createGain:(name) ->
+    gainNodes[name]=context.createGain()
+    gainNodes[name]
   mute: (destination) ->
     if not _.defined destination
       destination = 'output'
