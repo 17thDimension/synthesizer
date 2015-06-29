@@ -690,54 +690,93 @@ A simple example service that returns some data.
 
 (function() {
   angular.module("synthesizer").factory("AudioAnalyserService", function($window, AudioContextService) {
-    var HEIGHT, WIDTH, analyser, canvas, context, initialized, painter, visualizer;
+    var HEIGHT, WIDTH, context, ianalyser, icanvas, initialized, ipainter, ivisualizer, oanalyser, ocanvas, opainter, ovisualizer;
     context = AudioContextService.getContext();
-    analyser = context.createAnalyser();
-    analyser.fftSize = 2048;
-    visualizer = '';
-    canvas = document.getElementById('visualizer');
-    WIDTH = canvas.clientWidth;
-    HEIGHT = canvas.clientHeight;
-    painter = canvas.getContext("2d");
+    ianalyser = context.createAnalyser();
+    oanalyser = context.createAnalyser();
+    ianalyser.fftSize = 2048;
+    oanalyser.fftSize = 2048;
+    ivisualizer = '';
+    ovisualizer = '';
+    icanvas = document.getElementById('inputWaveForm');
+    ocanvas = document.getElementById('outputWaveForm');
+    WIDTH = icanvas.clientWidth;
+    HEIGHT = icanvas.clientHeight;
+    ipainter = icanvas.getContext("2d");
+    opainter = ocanvas.getContext("2d");
     initialized = false;
-    $window.drawOscilliscope = function() {
+    $window.drawOutputWaveForm = function() {
       var bufferLength, i, sliceWidth, timeBuffer, x, y;
-      visualizer = requestAnimationFrame(drawOscilliscope);
-      bufferLength = analyser.frequencyBinCount;
+      ovisualizer = requestAnimationFrame(drawOutputWaveForm);
+      bufferLength = oanalyser.frequencyBinCount;
       timeBuffer = new Uint8Array(bufferLength);
-      analyser.getByteTimeDomainData(timeBuffer);
-      painter.fillStyle = 'rgb(255, 255, 255)';
-      painter.fillRect(0, 0, WIDTH, HEIGHT);
-      painter.lineWidth = 1;
-      painter.strokeStyle = 'rgb(100, 100, 255)';
-      painter.beginPath();
+      oanalyser.getByteTimeDomainData(timeBuffer);
+      opainter.fillStyle = 'rgb(255, 255, 255)';
+      opainter.fillRect(0, 0, WIDTH, HEIGHT);
+      opainter.lineWidth = 1;
+      opainter.strokeStyle = 'rgb(100, 100, 255)';
+      opainter.beginPath();
       sliceWidth = WIDTH * 1.0 / bufferLength;
       x = 0;
       i = 0;
-      painter.moveTo(0, painter.height / 2);
+      opainter.moveTo(0, opainter.height / 2);
       while (i < bufferLength) {
         y = timeBuffer[i] / 2;
         if (i === 0) {
-          painter.moveTo(x, y);
+          opainter.moveTo(x, y);
         } else {
-          painter.lineTo(x, y);
+          opainter.lineTo(x, y);
         }
         x += sliceWidth;
         i++;
       }
-      painter.lineTo(painter.width, painter.height);
-      return painter.stroke();
+      opainter.lineTo(opainter.width, opainter.height);
+      return opainter.stroke();
+    };
+    $window.drawInputWaveForm = function() {
+      var bufferLength, i, sliceWidth, timeBuffer, x, y;
+      ivisualizer = requestAnimationFrame(drawInputWaveForm);
+      bufferLength = ianalyser.frequencyBinCount;
+      timeBuffer = new Uint8Array(bufferLength);
+      ianalyser.getByteTimeDomainData(timeBuffer);
+      ipainter.fillStyle = 'rgb(255, 255, 255)';
+      ipainter.fillRect(0, 0, WIDTH, HEIGHT);
+      ipainter.lineWidth = 1;
+      ipainter.strokeStyle = 'rgb(100, 100, 255)';
+      ipainter.beginPath();
+      sliceWidth = WIDTH * 1.0 / bufferLength;
+      x = 0;
+      i = 0;
+      ipainter.moveTo(0, ipainter.height / 2);
+      while (i < bufferLength) {
+        y = timeBuffer[i] / 2;
+        if (i === 0) {
+          ipainter.moveTo(x, y);
+        } else {
+          ipainter.lineTo(x, y);
+        }
+        x += sliceWidth;
+        i++;
+      }
+      ipainter.lineTo(ipainter.width, ipainter.height);
+      return ipainter.stroke();
     };
     return {
-      getAnalyser: function() {
+      getAnalyser: function(type) {
         if (!this.initialized) {
           this.initialize();
         }
-        return analyser;
+        if (type === 'input') {
+          return ianalyser;
+        } else {
+          return oanalyser;
+        }
       },
       initialize: function() {
         this.initialized = true;
-        return $window.drawOscilliscope();
+        $window.analyzer = ianalyser;
+        $window.drawInputWaveForm();
+        return $window.drawOutputWaveForm();
       }
     };
   });
@@ -770,24 +809,63 @@ A simple example service that returns some data.
 
 (function() {
   angular.module("synthesizer").factory("BiquadService", function(AudioContextService) {
-    var context, filter;
+    var context, filter, supportedParams;
     context = AudioContextService.getContext();
     filter = context.createBiquadFilter();
     filter.type = "highshelf";
     filter.frequency.value = 0;
     filter.gain.value = 0;
+    supportedParams = {
+      'lowpass': ['Q', 'frequency'],
+      'highpass': ['Q', 'frequency'],
+      'bandpass': ['Q', 'frequency'],
+      'lowshelf': ['Q', 'gain'],
+      'highshelf': ['Q', 'gain'],
+      'peaking': ['Q', 'frequency', 'gain'],
+      'notch': ['Q', 'frequency'],
+      'allpass': ['Q', 'frequency']
+    };
     return {
       getFilter: function() {
         return filter;
       },
-      setCutoff: function(cutoff) {
+      setFrequency: function(cutoff) {
         return filter.frequency.value = cutoff;
       },
-      getCutoff: function() {
+      getFrequency: function() {
         return filter.frequency.value;
+      },
+      setDetune: function(tune) {
+        return filter.detune.value = tune;
+      },
+      getDetune: function() {
+        return filter.detune.value;
+      },
+      setQ: function(quality) {
+        return filter.Q.value = quality;
+      },
+      getQ: function() {
+        return filter.Q.value;
       },
       setGain: function(gain) {
         return filter.gain.value = gain;
+      },
+      getType: function() {
+        return filter.type;
+      },
+      setType: function(type) {
+        return filter.type = type;
+      },
+      supports: function(parameter) {
+        var supportedParamsForType;
+        supportedParamsForType = this.getModeParameters(this.getType());
+        return supportedParamsForType.indexOf(parameter);
+      },
+      getFilterModes: function(gain) {
+        return Object.keys(supportedParams);
+      },
+      getModeParameters: function(mode) {
+        return supportedParams[mode];
       }
     };
   });
@@ -822,7 +900,14 @@ A simple example service that returns some data.
         if (!_.defined(destination)) {
           destination = 'output';
         }
+        if (!_.defined(gainNodes[destination])) {
+          return this.createGain(destination);
+        }
         return gainNodes[destination];
+      },
+      createGain: function(name) {
+        gainNodes[name] = context.createGain();
+        return gainNodes[name];
       },
       mute: function(destination) {
         if (!_.defined(destination)) {
@@ -908,7 +993,6 @@ A simple example service that returns some data.
         return instantLoop = !instantLoop;
       },
       instantLoopEnabled: function() {
-        console.log('get');
         return instantLoop;
       }
     };
@@ -1124,14 +1208,14 @@ A simple example service that returns some data.
         ref1 = ivory_keys.toUpperCase().split('');
         for (j = 0, len1 = ref1.length; j < len1; j++) {
           key = ref1[j];
-          nodes[defaultState][key] = new IvoryNode(key, OscillatorService.frequencyForKey(key));
+          nodes['keys'][key] = new IvoryNode(key, OscillatorService.frequencyForKey(key));
           nodes['sampler'][key] = new SampleNode(key);
         }
-        nodes[defaultState][record_key] = new RecordNode(record_key);
-        nodes[defaultState]['['] = new RootModifierNode('[', .5);
-        nodes[defaultState][']'] = new RootModifierNode(']', 2);
-        nodes[defaultState]['shift'] = new ShiftNode();
-        nodes[defaultState]['control'] = new StateToggleNode('command', 'sampler');
+        nodes['keys'][record_key] = new RecordNode(record_key);
+        nodes['keys']['['] = new RootModifierNode('[', .5);
+        nodes['keys'][']'] = new RootModifierNode(']', 2);
+        nodes['keys']['shift'] = new ShiftNode();
+        nodes['keys']['control'] = new StateToggleNode('control', 'sampler');
         return nodes;
       },
       activate: function(key) {
@@ -1168,11 +1252,13 @@ A simple example service that returns some data.
  */
 
 (function() {
-  angular.module("synthesizer").factory("OscillatorService", function(AudioContextService, AudioAnalyserService) {
-    var audioContext, oscillators, rootFrequency;
+  angular.module("synthesizer").factory("OscillatorService", function(AudioContextService, GainService, AudioAnalyserService) {
+    var attack, audioContext, oscillators, release, rootFrequency;
     audioContext = AudioContextService.getContext();
     oscillators = [];
     rootFrequency = 256;
+    release = .1;
+    attack = 0;
     return {
       getRootFrequency: function() {
         return rootFrequency;
@@ -1185,17 +1271,19 @@ A simple example service that returns some data.
         addOscillator = function(type) {
           var osc;
           osc = audioContext.createOscillator();
+          osc.name = 'osc ' + oscillators.length;
           osc.type = type;
           osc.frequency.value = 0;
+          osc.vol = GainService.createGain(type);
           osc.start();
           return oscillators.push(osc);
         };
         addOscillator('sine');
-        addOscillator('triangle');
         addOscillator('sine');
-        addOscillator('triangle');
-        addOscillator('square');
-        addOscillator('square');
+        addOscillator('sine');
+        addOscillator('sine');
+        addOscillator('sine');
+        addOscillator('sine');
         return oscillators;
       },
       fetchOscillator: function(node) {
@@ -1215,12 +1303,13 @@ A simple example service that returns some data.
         var osc;
         osc = this.fetchOscillator(node);
         osc.originNode = node;
-        return osc.frequency.value = node.frequency * rootFrequency;
+        osc.frequency.value = node.frequency * rootFrequency;
+        return osc.vol.gain.value = 1;
       },
       nodeOff: function(node) {
         var osc;
         osc = this.fetchOscillator(node);
-        osc.frequency.value = 0;
+        osc.vol.gain.value = 0;
         return delete osc.originNode;
       },
       frequencyForKey: function(key) {
@@ -1237,11 +1326,11 @@ A simple example service that returns some data.
           S: 3 / 2,
           D: 5 / 3,
           F: 27 / 20,
-          G: 45 / 32,
-          H: 729 / 512,
-          J: 3 / 2,
-          K: 128 / 81,
-          L: 8 / 5,
+          G: 3 / 2,
+          H: 5 / 3,
+          J: 7 / 4,
+          K: 16 / 9,
+          L: 9 / 5,
           Q: 16 / 9,
           W: 2,
           E: 10 / 4,
@@ -1276,54 +1365,37 @@ A simple example service that returns some data.
  */
 
 (function() {
-  angular.module("synthesizer").factory("RecordService", function($rootScope, AudioContextService, AudioAnalyserService, GainService, TrackService) {
-    var analyser, context, inputGain, localStream, recorder, recording, service, source, sourceStream, userMediaStream;
+  angular.module("synthesizer").factory("RecordService", function($window, $rootScope, AudioContextService, AudioAnalyserService, GainService, TrackService) {
+    var context, inputAnalyser, inputGain, outputAnalyser, recorder, recording, service, source, sourceStream;
     context = AudioContextService.getContext();
     source = 'output';
-    analyser = AudioAnalyserService.getAnalyser();
+    outputAnalyser = AudioAnalyserService.getAnalyser('output');
+    inputAnalyser = AudioAnalyserService.getAnalyser('input');
     sourceStream = GainService.getGain('output');
     inputGain = GainService.getGain('input');
-    localStream = null;
     recorder = new Recorder(sourceStream);
     recording = false;
-    userMediaStream = null;
     service = this;
-    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
-    $rootScope.$on('stateChanged', function($scope, state) {
-      var self;
-      self = service.$get();
-      if (state === 'sampler') {
-        return self.setSource('input');
-      } else {
-        return self.setSource('output');
-      }
-    });
     return {
-      getLocalSource: function() {
-        if (navigator.getUserMedia) {
-          return navigator.getUserMedia({
-            audio: true
-          }, (function(stream) {
-            var gain;
-            sourceStream = context.createMediaStreamSource(stream);
-            gain = GainService.getGain('input');
-            sourceStream.connect(gain);
-            gain.connect(analyser);
-            recorder.destroy();
-            recorder = new Recorder(gain);
-          }), function(err) {});
+      updateState: function(state) {
+        console.log(this);
+        if (state === 'sampler') {
+          return this.setSource('input');
+        } else {
+          return this.setSource('output');
         }
       },
       setSource: function(src) {
+        console.log(this, src);
         source = src;
-        if (src === 'output') {
-          recorder.destroy();
-          sourceStream = GainService.getGain();
-          recorder = new Recorder(sourceStream);
-        }
         if (src === 'input') {
-          return this.getLocalSource();
+          return GainService.setVolume(1, 'user-media');
+        } else {
+          return GainService.setVolume(0, 'user-media');
         }
+      },
+      getMediaStream: function() {
+        return $window.userMediaStream;
       },
       getSource: function() {
         return source;
@@ -1352,6 +1424,25 @@ A simple example service that returns some data.
         } else {
           return this.startRecording();
         }
+      }
+    };
+  });
+
+}).call(this);
+
+
+/*
+A simple example service that returns some data.
+ */
+
+(function() {
+  angular.module("synthesizer").factory("ReverbService", function(AudioContextService) {
+    var context, reverb;
+    context = AudioContextService.getContext();
+    reverb = context.createConvolver();
+    return {
+      getReverb: function() {
+        return reverb;
       }
     };
   });
@@ -1397,7 +1488,7 @@ A simple example service that returns some data.
  */
 
 (function() {
-  angular.module("synthesizer").factory("StateService", function($rootScope) {
+  angular.module("synthesizer").factory("StateService", function($rootScope, RecordService) {
     var defaultState, state, stateHistory, states;
     defaultState = 'keys';
     state = defaultState;
@@ -1405,8 +1496,6 @@ A simple example service that returns some data.
     stateHistory = [];
     return {
       toggleState: function(requestedState) {
-        console.trace();
-        console.log('toggle' + requestedState);
         if (state === requestedState) {
           return this.setState(stateHistory.pop());
         } else {
@@ -1424,8 +1513,7 @@ A simple example service that returns some data.
         return states;
       },
       setState: function(newState) {
-        console.log(newState);
-        $rootScope.$broadcast('stateChanged', newState);
+        RecordService.updateState(newState);
         return state = newState;
       }
     };
@@ -1445,14 +1533,16 @@ A simple example service that returns some data.
     $scope.rootFrequency = OscillatorService.getRootFrequency();
     $scope.setRootFrequency = OscillatorService.setRootFrequency;
     $scope.getRootFrequency = OscillatorService.getRootFrequency;
+    $scope.filter = BiquadService;
+    $scope.filterType = BiquadService.getType();
+    $scope.setFilterType = function(type) {
+      return $scope.filter.setType(type);
+    };
     $scope.activateNode = function(key) {
       return NodeService.activate(key);
     };
     $scope.silenceNode = function(key) {
       return NodeService.silence(key);
-    };
-    $scope.updateCutoff = function(val) {
-      return BiquadService.setCutoff(val * 100);
     };
     $scope.updateGain = function(vol, destination) {
       return GainService.setVolume(vol, destination);
@@ -1504,7 +1594,6 @@ A simple example service that returns some data.
         return RecordService.startRecording();
       } else {
         return RecordService.stopRecording(function(buffer) {
-          console.log('new_track');
           TrackService.addTrack(buffer, LoopService.instantLoopEnabled);
           return HudService.paint();
         });
@@ -1530,24 +1619,33 @@ A simple example service that returns some data.
  */
 
 (function() {
-  angular.module("synthesizer").factory("SynthService", function(NodeService, OscillatorService, RecordService, BiquadService, AudioAnalyserService, GainService, AudioContextService) {
-    var analyser, context, filter, gain, nodes, oscillators;
+  angular.module("synthesizer").factory("SynthService", function(NodeService, OscillatorService, RecordService, BiquadService, AudioAnalyserService, GainService, AudioContextService, UserMediaService, ReverbService) {
+    var context, filter, inputAnalyser, inputGain, nodes, oscillators, outputAnalyser, outputGain, reverb, userMediaGain;
     nodes = NodeService.initializeNodes();
     context = AudioContextService.getContext();
     oscillators = OscillatorService.initializeOscillators();
-    analyser = AudioAnalyserService.getAnalyser();
+    inputAnalyser = AudioAnalyserService.getAnalyser('input');
+    outputAnalyser = AudioAnalyserService.getAnalyser('output');
     filter = BiquadService.getFilter();
-    gain = GainService.getGain();
+    reverb = ReverbService.getReverb();
+    outputGain = GainService.getGain('output');
+    inputGain = GainService.getGain('input');
+    userMediaGain = GainService.getGain('user-media');
     return {
       initialize: function() {
         var i, len, osc;
+        UserMediaService.initialize();
         for (i = 0, len = oscillators.length; i < len; i++) {
           osc = oscillators[i];
-          osc.connect(filter);
+          osc.connect(osc.vol);
+          osc.vol.connect(inputGain);
         }
-        filter.connect(analyser);
-        analyser.connect(gain);
-        return gain.connect(context.destination);
+        userMediaGain.connect(inputGain);
+        inputGain.connect(inputAnalyser);
+        inputAnalyser.connect(filter);
+        filter.connect(outputGain);
+        outputGain.connect(outputAnalyser);
+        return outputAnalyser.connect(context.destination);
       }
     };
   });
@@ -1627,39 +1725,114 @@ A simple example service that returns some data.
  */
 
 (function() {
-  angular.module("synthesizer").factory("AudioVisualizerService", function(AudioAnalyserService, $window) {
-    var analyser, canvas, canvasCtx, drawFrame;
-    canvas = $window.document.querySelector('.oscilloscope');
-    analyser = AudioAnalyserService.getanalyser();
-    canvasCtx = canvas.getContext('2d');
-    return drawFrame = function() {
-      var HEIGHT, WIDTH, drawVisual, i, sliceWidth, v, x, y;
-      WIDTH = $window.getClientWidth();
-      HEIGHT = 200;
-      drawVisual = requestAnimationFrame(draw);
-      analyser.getByteTimeDomainData(dataArray);
-      canvasCtx.fillStyle = 'rgb(200, 200, 200)';
-      canvasCtx.fillRect(0, 0, WIDTH, HEIGHT);
-      canvasCtx.lineWidth = 2;
-      canvasCtx.strokeStyle = 'rgb(0, 0, 0)';
-      canvasCtx.beginPath();
+  angular.module("synthesizer").factory("UserMediaService", function($window, $rootScope, AudioContextService, AudioAnalyserService, GainService, TrackService) {
+    var context, inputAnalyser, inputGain, userMediaGain;
+    context = AudioContextService.getContext();
+    inputAnalyser = AudioAnalyserService.getAnalyser('input');
+    inputGain = GainService.getGain('input');
+    userMediaGain = GainService.createGain('user-media');
+    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+    return {
+      getUserStream: function() {
+        return $window.userMediaStream;
+      },
+      initialize: function(cb) {
+        if (navigator.getUserMedia) {
+          return navigator.getUserMedia({
+            audio: true
+          }, (function(stream) {
+            window.userMediaStream = context.createMediaStreamSource(stream);
+            console.log(userMediaGain, window.userMediaStream);
+            window.userMediaStream.connect(userMediaGain);
+            if (cb) {
+              return cb(window.userMediaStream, null);
+            }
+          }), function(err) {
+            console.log('error', err);
+            if (cb) {
+              return cb(null, err);
+            }
+          });
+        }
+      }
+    };
+  });
+
+}).call(this);
+
+
+/*
+A simple example service that returns some data.
+ */
+
+(function() {
+  angular.module("synthesizer").factory("AudioVisualizerService", function($window, AudioContextService) {
+    var HEIGHT, VisualizerNode, WIDTH, canvas, context, initialized, painter, visualizer;
+    VisualizerNode = (function() {
+      function VisualizerNode(key) {
+        var canvas;
+        this.key = key;
+        canvas = document.getElementById(this.key);
+        this.active = false;
+      }
+
+      VisualizerNode.prototype.silence = function(velocity) {
+        return this.active = false;
+      };
+
+      VisualizerNode.prototype.sustain = function(velocity) {
+        return this.velocity += 1;
+      };
+
+      return VisualizerNode;
+
+    })();
+    context = AudioContextService.getContext();
+    visualizer = '';
+    canvas = document.getElementById('visualizer');
+    WIDTH = canvas.clientWidth;
+    HEIGHT = canvas.clientHeight;
+    painter = canvas.getContext("2d");
+    initialized = false;
+    $window.drawOscilliscope = function() {
+      var bufferLength, i, sliceWidth, timeBuffer, x, y;
+      visualizer = requestAnimationFrame(drawOscilliscope);
+      bufferLength = analyser.frequencyBinCount;
+      timeBuffer = new Uint8Array(bufferLength);
+      analyser.getByteTimeDomainData(timeBuffer);
+      painter.fillStyle = 'rgb(255, 255, 255)';
+      painter.fillRect(0, 0, WIDTH, HEIGHT);
+      painter.lineWidth = 1;
+      painter.strokeStyle = 'rgb(100, 100, 255)';
+      painter.beginPath();
       sliceWidth = WIDTH * 1.0 / bufferLength;
       x = 0;
       i = 0;
+      painter.moveTo(0, painter.height / 2);
       while (i < bufferLength) {
-        v = dataArray[i] / 128.0;
-        y = v * HEIGHT / 2;
+        y = timeBuffer[i] / 2;
         if (i === 0) {
-          canvasCtx.moveTo(x, y);
+          painter.moveTo(x, y);
         } else {
-          canvasCtx.lineTo(x, y);
+          painter.lineTo(x, y);
         }
         x += sliceWidth;
         i++;
       }
-      canvasCtx.lineTo(canvas.width, canvas.height / 2);
-      canvasCtx.stroke();
-      return draw();
+      painter.lineTo(painter.width, painter.height);
+      return painter.stroke();
+    };
+    return {
+      getAnalyser: function() {
+        if (!this.initialized) {
+          this.initialize();
+        }
+        return analyser;
+      },
+      initialize: function() {
+        this.initialized = true;
+        return $window.drawOscilliscope();
+      }
     };
   });
 
