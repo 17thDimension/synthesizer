@@ -112,7 +112,8 @@ angular.module("synthesizer")
         console.log 'playSample'
         console.log @stream
         if _.defined @stream
-          @stream.play 0
+          console.log @stream,AudioAnalyserService.getAnalyser('input')
+          @stream.play AudioAnalyserService.getAnalyser('input')
       super(velocity)
 
 
