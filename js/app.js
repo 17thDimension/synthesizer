@@ -256,381 +256,6 @@
 }).call(this);
 
 (function() {
-  angular.module("synthesizer").directive('synthNode', function() {
-    return {
-      restrict: 'A',
-      require: '^o-key',
-      template: '<div>aksjdnakjsndkjn</div>'
-    };
-  });
-
-}).call(this);
-
-(function() {
-  angular.module("synthesizer").factory('FormFactory', function($q) {
-
-    /*
-    Basic form class that you can extend in your actual forms.
-    
-    Object attributes:
-    - loading[Boolean] - is the request waiting for response?
-    - message[String] - after response, success message
-    - errors[String[]] - after response, error messages
-    
-    Options:
-      - submitPromise[function] (REQUIRED) - creates a form request promise
-      - onSuccess[function] - will be called on succeded promise
-      - onFailure[function] - will be called on failed promise
-     */
-    var FormFactory;
-    return FormFactory = (function() {
-      function FormFactory(options) {
-        this.options = options != null ? options : {};
-        this.loading = false;
-      }
-
-      FormFactory.prototype.submit = function() {
-        if (!this.loading) {
-          return this._handleRequestPromise(this._createSubmitPromise());
-        }
-      };
-
-      FormFactory.prototype._onSuccess = function(response) {
-        this.message = response.message || response.success;
-        return response;
-      };
-
-      FormFactory.prototype._onFailure = function(response) {
-        var ref, ref1, ref2, ref3, ref4;
-        this.errors = ((ref = response.data) != null ? (ref1 = ref.data) != null ? ref1.errors : void 0 : void 0) || ((ref2 = response.data) != null ? ref2.errors : void 0) || [((ref3 = response.data) != null ? ref3.error : void 0) || response.error || ((ref4 = response.data) != null ? ref4.message : void 0) || response.message || "Something has failed. Try again."];
-        return $q.reject(response);
-      };
-
-      FormFactory.prototype._createSubmitPromise = function() {
-        return this.options.submitPromise();
-      };
-
-      FormFactory.prototype._handleRequestPromise = function($promise, onSuccess, onFailure) {
-        this.$promise = $promise;
-        this.loading = true;
-        this.submitted = false;
-        this.message = null;
-        this.errors = [];
-        this.$promise.then((function(_this) {
-          return function(response) {
-            _this.errors = [];
-            _this.submitted = true;
-            return response;
-          };
-        })(this)).then(_.bind(this._onSuccess, this)).then(onSuccess || this.options.onSuccess)["catch"](_.bind(this._onFailure, this))["catch"](onFailure || this.options.onFailure)["finally"]((function(_this) {
-          return function() {
-            return _this.loading = false;
-          };
-        })(this));
-        return this.$promise;
-      };
-
-      return FormFactory;
-
-    })();
-  });
-
-}).call(this);
-
-(function() {
-  var slice = [].slice;
-
-  angular.module("synthesizer").factory('ObserverFactory', function($rootScope) {
-    var ObserverFactory;
-    return ObserverFactory = (function() {
-      function ObserverFactory() {}
-
-      ObserverFactory.prototype.on = function(eventName, listener) {
-        var base;
-        if (this.listeners == null) {
-          this.listeners = {};
-        }
-        if ((base = this.listeners)[eventName] == null) {
-          base[eventName] = [];
-        }
-        return this.listeners[eventName].push(listener);
-      };
-
-      ObserverFactory.prototype.once = function(eventName, listener) {
-        listener.__once__ = true;
-        return this.on(eventName, listener);
-      };
-
-      ObserverFactory.prototype.off = function(eventName, listener) {
-        var i, j, len, ref, ref1, results, v;
-        if (!((ref = this.listeners) != null ? ref[eventName] : void 0)) {
-          return;
-        }
-        if (!listener) {
-          return delete this.listeners[eventName];
-        }
-        ref1 = this.listeners[eventName];
-        results = [];
-        for (v = j = 0, len = ref1.length; j < len; v = ++j) {
-          i = ref1[v];
-          if (this.listeners[eventName] === listener) {
-            this.listeners.splice(i, 1);
-            break;
-          } else {
-            results.push(void 0);
-          }
-        }
-        return results;
-      };
-
-      ObserverFactory.prototype.fireEvent = function() {
-        var eventName, j, len, params, ref, ref1, ref2, v;
-        eventName = arguments[0], params = 2 <= arguments.length ? slice.call(arguments, 1) : [];
-        if (!((ref = this.listeners) != null ? (ref1 = ref[eventName]) != null ? ref1.length : void 0 : void 0)) {
-          return;
-        }
-        ref2 = this.listeners[eventName];
-        for (j = 0, len = ref2.length; j < len; j++) {
-          v = ref2[j];
-          v.apply(this, params);
-          if (v.__once__) {
-            this.off(eventName, v);
-          }
-        }
-        if (!$rootScope.$$phase) {
-          return $rootScope.$apply();
-        }
-      };
-
-      return ObserverFactory;
-
-    })();
-  });
-
-}).call(this);
-
-(function() {
-  angular.module("synthesizer").factory('PromiseFactory', function($q) {
-    var constructor;
-    return constructor = function(value, resolve) {
-      var deferred;
-      if (resolve == null) {
-        resolve = true;
-      }
-      if ((value != null) && typeof (value != null ? value.then : void 0) === 'function') {
-        return value;
-      } else {
-        deferred = $q.defer();
-        if (resolve) {
-          deferred.resolve(value);
-        } else {
-          deferred.reject(value);
-        }
-        return deferred.promise;
-      }
-    };
-  });
-
-}).call(this);
-
-(function() {
-  AudioBufferSourceNode.prototype.play = function(offset) {
-    console.log(this.played);
-    if (this.played !== true) {
-      this.start(0);
-      return this.played = true;
-    } else {
-      return this.replay();
-    }
-  };
-
-  AudioBufferSourceNode.prototype.replay = function() {
-    var context, newSource;
-    console.log('replay');
-    context = this.context;
-    newSource = context.createBufferSource();
-    newSource.buffer = this.buffer;
-    newSource.connect(context.destination);
-    return newSource.start(0);
-  };
-
-}).call(this);
-
-(function() {
-  Array.prototype.contains = function(item) {
-    return this.indexOf(item !== -1);
-  };
-
-}).call(this);
-
-(function() {
-  window._ = {};
-
-  window._.defined = function(obj) {
-    return typeof obj !== 'undefined';
-  };
-
-}).call(this);
-
-(function() {
-  String.prototype.isNodeKey = function() {
-    return this.length === 1 && this.match(/[A-Za-z0-9 _]*[A-Za-z0-9][A-Za-z0-9 _]/i);
-  };
-
-}).call(this);
-
-(function() {
-  (function(window) {
-    var Recorder, WORKER_PATH;
-    WORKER_PATH = 'components/Recorderjs/recorderWorker.js';
-    Recorder = function(source, cfg) {
-      var bufferLen, config, currCallback, numChannels, recording, worker;
-      console.log(source);
-      config = cfg || {};
-      bufferLen = config.bufferLen || 4096;
-      numChannels = config.numChannels || 2;
-      this.context = source.context;
-      this.node = (this.context.createScriptProcessor || this.context.createJavaScriptNode).call(this.context, bufferLen, numChannels, numChannels);
-      worker = new Worker(config.workerPath || WORKER_PATH);
-      worker.postMessage({
-        command: 'init',
-        config: {
-          sampleRate: this.context.sampleRate,
-          numChannels: numChannels
-        }
-      });
-      recording = false;
-      currCallback = void 0;
-      this.node.onaudioprocess = function(e) {
-        var buffer, channel;
-        if (!recording) {
-          return;
-        }
-        buffer = [];
-        channel = 0;
-        while (channel < numChannels) {
-          buffer.push(e.inputBuffer.getChannelData(channel));
-          channel++;
-        }
-        worker.postMessage({
-          command: 'record',
-          buffer: buffer
-        });
-      };
-      this.configure = function(cfg) {
-        var prop;
-        for (prop in cfg) {
-          if (cfg.hasOwnProperty(prop)) {
-            config[prop] = cfg[prop];
-          }
-        }
-      };
-      this.record = function() {
-        recording = true;
-      };
-      this.stop = function() {
-        recording = false;
-      };
-      this.clear = function() {
-        worker.postMessage({
-          command: 'clear'
-        });
-      };
-      this.getBuffer = function(cb) {
-        currCallback = cb || config.callback;
-        worker.postMessage({
-          command: 'getBuffer'
-        });
-      };
-      this.exportWAV = function(cb, type) {
-        currCallback = cb || config.callback;
-        type = type || config.type || 'audio/wav';
-        if (!currCallback) {
-          throw new Error('Callback not set');
-        }
-        worker.postMessage({
-          command: 'exportWAV',
-          type: type
-        });
-      };
-      this.destroy = function() {
-        worker.terminate();
-        console.log(worker);
-        return delete this;
-      };
-      worker.onmessage = function(e) {
-        var blob;
-        blob = e.data;
-        currCallback(blob);
-      };
-      source.connect(this.node);
-      this.node.connect(this.context.destination);
-    };
-    Recorder.forceDownload = function(blob, filename) {
-      var click, link, url;
-      url = (window.URL || window.webkitURL).createObjectURL(blob);
-      link = window.document.createElement('a');
-      link.href = url;
-      link.download = filename || 'output.wav';
-      click = document.createEvent('Event');
-      click.initEvent('click', true, true);
-      link.dispatchEvent(click);
-    };
-    window.Recorder = Recorder;
-  })(window);
-
-}).call(this);
-
-(function() {
-  angular.module("synthesizer").service('Auth', function($http, PromiseFactory) {
-    var Auth, USER_EMAIL_CACHE_KEY, USER_TOKEN_CACHE_KEY;
-    USER_EMAIL_CACHE_KEY = "user_email";
-    USER_TOKEN_CACHE_KEY = "user_token";
-    return new (Auth = (function() {
-      function Auth() {
-        this.setAuthToken(localStorage.getItem(USER_EMAIL_CACHE_KEY), localStorage.getItem(USER_TOKEN_CACHE_KEY));
-      }
-
-      Auth.prototype.setAuthToken = function(email, token, user) {
-        this.email = email != null ? email : null;
-        this.token = token != null ? token : null;
-        if (this.email && this.token) {
-          $http.defaults.headers.common["X-User-Email"] = this.email;
-          $http.defaults.headers.common["X-User-Token"] = this.token;
-          localStorage.setItem(USER_EMAIL_CACHE_KEY, this.email);
-          localStorage.setItem(USER_TOKEN_CACHE_KEY, this.token);
-        } else {
-          delete $http.defaults.headers.common["X-User-Email"];
-          delete $http.defaults.headers.common["X-User-Token"];
-          localStorage.removeItem(USER_EMAIL_CACHE_KEY);
-          localStorage.removeItem(USER_TOKEN_CACHE_KEY);
-        }
-        return this.refreshUser(user);
-      };
-
-      Auth.prototype.refreshUser = function(user) {
-        if (user == null) {
-          user = null;
-        }
-        return this.user = user ? (user.$promise = PromiseFactory(user), user.$resolved = true, user) : this.email && this.token ? void 0 : null;
-      };
-
-      Auth.prototype.isSignedIn = function() {
-        return !!this.token;
-      };
-
-      Auth.prototype.resetSession = function() {
-        return this.setAuthToken(null, null);
-      };
-
-      return Auth;
-
-    })());
-  });
-
-}).call(this);
-
-(function() {
   angular.module("synthesizer").controller("PatchDetailCtrl", function($scope, $stateParams, PetService) {
     return $scope.patch = PatchService.get($stateParams.petId);
   });
@@ -866,6 +491,50 @@ A simple example service that returns some data.
       },
       getModeParameters: function(mode) {
         return supportedParams[mode];
+      }
+    };
+  });
+
+}).call(this);
+
+
+/*
+A simple example service that returns some data.
+ */
+
+(function() {
+  angular.module("synthesizer").factory("DelayService", function(AudioContextService) {
+    var context, currentVolume, delay, feedback;
+    context = AudioContextService.getContext();
+    delay = context.createDelay();
+    feedback = context.createGain();
+    currentVolume = 1;
+    delay.connect(feedback);
+    feedback.connect(delay);
+    return {
+      setFeedback: function(vol) {
+        return feedback.gain.value = vol;
+      },
+      getOutput: function() {
+        return feedback;
+      },
+      mute: function(destination) {
+        if (!_.defined(destination)) {
+          destination = 'output';
+        }
+        return control.gain.value = 0;
+      },
+      unMute: function(destination) {
+        if (!_.defined(destination)) {
+          destination = 'output';
+        }
+        return gainNodes[destination].gain.value = currentVolume;
+      },
+      max: function(destination) {
+        if (!_.defined(destination)) {
+          destination = 'output';
+        }
+        return this.setVolume(1, destination);
       }
     };
   });
@@ -1171,7 +840,8 @@ A simple example service that returns some data.
           console.log('playSample');
           console.log(this.stream);
           if (_.defined(this.stream)) {
-            this.stream.play(0);
+            console.log(this.stream, AudioAnalyserService.getAnalyser('input'));
+            this.stream.play(AudioAnalyserService.getAnalyser('input'));
           }
         }
         return SampleNode.__super__.activate.call(this, velocity);
@@ -1521,6 +1191,89 @@ A simple example service that returns some data.
 
 }).call(this);
 
+
+/*
+A simple example service that returns some data.
+ */
+
+(function() {
+  angular.module("synthesizer").factory("StreamChainService", function(AudioContextService) {
+    var context, graph;
+    context = AudioContextService.getContext();
+    graph = [];
+    return {
+      appendConnection: function(inputNode, outputNode) {
+        return graph.push([inputNode, outputNode]);
+      },
+      insertNode: function(node, index) {
+        var i, len, nodes_to_push, p_node;
+        nodes_to_push = [];
+        while (chain.length > index) {
+          nodes_to_push.push(chain.pop());
+        }
+        chain.push(node);
+        for (i = 0, len = nodes_to_push.length; i < len; i++) {
+          p_node = nodes_to_push[i];
+          chain.push(p_node);
+        }
+        return reconnect();
+      },
+      getGraph: function() {
+        return graph;
+      },
+      reconnect: function() {
+        var i, j, k, len, len1, len2, node, node_pair, results;
+        for (i = 0, len = graph.length; i < len; i++) {
+          node_pair = graph[i];
+          for (j = 0, len1 = node_pair.length; j < len1; j++) {
+            node = node_pair[j];
+            node.disconnect();
+          }
+        }
+        results = [];
+        for (k = 0, len2 = graph.length; k < len2; k++) {
+          node_pair = graph[k];
+          results.push(node_pair[0].connect(node_pair[1]));
+        }
+        return results;
+      },
+      setDetune: function(tune) {
+        return filter.detune.value = tune;
+      },
+      getDetune: function() {
+        return filter.detune.value;
+      },
+      setQ: function(quality) {
+        return filter.Q.value = quality;
+      },
+      getQ: function() {
+        return filter.Q.value;
+      },
+      setGain: function(gain) {
+        return filter.gain.value = gain;
+      },
+      getType: function() {
+        return filter.type;
+      },
+      setType: function(type) {
+        return filter.type = type;
+      },
+      supports: function(parameter) {
+        var supportedParamsForType;
+        supportedParamsForType = this.getModeParameters(this.getType());
+        return supportedParamsForType.indexOf(parameter);
+      },
+      getFilterModes: function(gain) {
+        return Object.keys(supportedParams);
+      },
+      getModeParameters: function(mode) {
+        return supportedParams[mode];
+      }
+    };
+  });
+
+}).call(this);
+
 (function() {
   angular.module("synthesizer").controller("SynthCtrl", function($scope, $stateParams, AudioContextService, AudioAnalyserService, SynthService, BiquadService, RecordService, StateService, TrackService, NodeService, OscillatorService, GainService, LoopService) {
     var findNodeKey;
@@ -1834,6 +1587,382 @@ A simple example service that returns some data.
         return $window.drawOscilliscope();
       }
     };
+  });
+
+}).call(this);
+
+(function() {
+  angular.module("synthesizer").directive('synthNode', function() {
+    return {
+      restrict: 'A',
+      require: '^o-key',
+      template: '<div>aksjdnakjsndkjn</div>'
+    };
+  });
+
+}).call(this);
+
+(function() {
+  angular.module("synthesizer").factory('FormFactory', function($q) {
+
+    /*
+    Basic form class that you can extend in your actual forms.
+    
+    Object attributes:
+    - loading[Boolean] - is the request waiting for response?
+    - message[String] - after response, success message
+    - errors[String[]] - after response, error messages
+    
+    Options:
+      - submitPromise[function] (REQUIRED) - creates a form request promise
+      - onSuccess[function] - will be called on succeded promise
+      - onFailure[function] - will be called on failed promise
+     */
+    var FormFactory;
+    return FormFactory = (function() {
+      function FormFactory(options) {
+        this.options = options != null ? options : {};
+        this.loading = false;
+      }
+
+      FormFactory.prototype.submit = function() {
+        if (!this.loading) {
+          return this._handleRequestPromise(this._createSubmitPromise());
+        }
+      };
+
+      FormFactory.prototype._onSuccess = function(response) {
+        this.message = response.message || response.success;
+        return response;
+      };
+
+      FormFactory.prototype._onFailure = function(response) {
+        var ref, ref1, ref2, ref3, ref4;
+        this.errors = ((ref = response.data) != null ? (ref1 = ref.data) != null ? ref1.errors : void 0 : void 0) || ((ref2 = response.data) != null ? ref2.errors : void 0) || [((ref3 = response.data) != null ? ref3.error : void 0) || response.error || ((ref4 = response.data) != null ? ref4.message : void 0) || response.message || "Something has failed. Try again."];
+        return $q.reject(response);
+      };
+
+      FormFactory.prototype._createSubmitPromise = function() {
+        return this.options.submitPromise();
+      };
+
+      FormFactory.prototype._handleRequestPromise = function($promise, onSuccess, onFailure) {
+        this.$promise = $promise;
+        this.loading = true;
+        this.submitted = false;
+        this.message = null;
+        this.errors = [];
+        this.$promise.then((function(_this) {
+          return function(response) {
+            _this.errors = [];
+            _this.submitted = true;
+            return response;
+          };
+        })(this)).then(_.bind(this._onSuccess, this)).then(onSuccess || this.options.onSuccess)["catch"](_.bind(this._onFailure, this))["catch"](onFailure || this.options.onFailure)["finally"]((function(_this) {
+          return function() {
+            return _this.loading = false;
+          };
+        })(this));
+        return this.$promise;
+      };
+
+      return FormFactory;
+
+    })();
+  });
+
+}).call(this);
+
+(function() {
+  var slice = [].slice;
+
+  angular.module("synthesizer").factory('ObserverFactory', function($rootScope) {
+    var ObserverFactory;
+    return ObserverFactory = (function() {
+      function ObserverFactory() {}
+
+      ObserverFactory.prototype.on = function(eventName, listener) {
+        var base;
+        if (this.listeners == null) {
+          this.listeners = {};
+        }
+        if ((base = this.listeners)[eventName] == null) {
+          base[eventName] = [];
+        }
+        return this.listeners[eventName].push(listener);
+      };
+
+      ObserverFactory.prototype.once = function(eventName, listener) {
+        listener.__once__ = true;
+        return this.on(eventName, listener);
+      };
+
+      ObserverFactory.prototype.off = function(eventName, listener) {
+        var i, j, len, ref, ref1, results, v;
+        if (!((ref = this.listeners) != null ? ref[eventName] : void 0)) {
+          return;
+        }
+        if (!listener) {
+          return delete this.listeners[eventName];
+        }
+        ref1 = this.listeners[eventName];
+        results = [];
+        for (v = j = 0, len = ref1.length; j < len; v = ++j) {
+          i = ref1[v];
+          if (this.listeners[eventName] === listener) {
+            this.listeners.splice(i, 1);
+            break;
+          } else {
+            results.push(void 0);
+          }
+        }
+        return results;
+      };
+
+      ObserverFactory.prototype.fireEvent = function() {
+        var eventName, j, len, params, ref, ref1, ref2, v;
+        eventName = arguments[0], params = 2 <= arguments.length ? slice.call(arguments, 1) : [];
+        if (!((ref = this.listeners) != null ? (ref1 = ref[eventName]) != null ? ref1.length : void 0 : void 0)) {
+          return;
+        }
+        ref2 = this.listeners[eventName];
+        for (j = 0, len = ref2.length; j < len; j++) {
+          v = ref2[j];
+          v.apply(this, params);
+          if (v.__once__) {
+            this.off(eventName, v);
+          }
+        }
+        if (!$rootScope.$$phase) {
+          return $rootScope.$apply();
+        }
+      };
+
+      return ObserverFactory;
+
+    })();
+  });
+
+}).call(this);
+
+(function() {
+  angular.module("synthesizer").factory('PromiseFactory', function($q) {
+    var constructor;
+    return constructor = function(value, resolve) {
+      var deferred;
+      if (resolve == null) {
+        resolve = true;
+      }
+      if ((value != null) && typeof (value != null ? value.then : void 0) === 'function') {
+        return value;
+      } else {
+        deferred = $q.defer();
+        if (resolve) {
+          deferred.resolve(value);
+        } else {
+          deferred.reject(value);
+        }
+        return deferred.promise;
+      }
+    };
+  });
+
+}).call(this);
+
+(function() {
+  AudioBufferSourceNode.prototype.play = function(destination) {
+    this.destination = destination;
+    console.log(this.played);
+    if (this.played !== true) {
+      this.start(0);
+      return this.played = true;
+    } else {
+      return this.replay();
+    }
+  };
+
+  AudioBufferSourceNode.prototype.replay = function() {
+    var context, newSource;
+    console.log('replay');
+    context = this.context;
+    newSource = context.createBufferSource();
+    newSource.buffer = this.buffer;
+    newSource.connect(this.destination);
+    return newSource.start(0);
+  };
+
+}).call(this);
+
+(function() {
+  Array.prototype.contains = function(item) {
+    return this.indexOf(item !== -1);
+  };
+
+}).call(this);
+
+(function() {
+  window._ = {};
+
+  window._.defined = function(obj) {
+    return typeof obj !== 'undefined';
+  };
+
+}).call(this);
+
+(function() {
+  String.prototype.isNodeKey = function() {
+    return this.length === 1 && this.match(/[A-Za-z0-9 _]*[A-Za-z0-9][A-Za-z0-9 _]/i);
+  };
+
+}).call(this);
+
+(function() {
+  (function(window) {
+    var Recorder, WORKER_PATH;
+    WORKER_PATH = 'components/Recorderjs/recorderWorker.js';
+    Recorder = function(source, cfg) {
+      var bufferLen, config, currCallback, numChannels, recording, worker;
+      console.log(source);
+      config = cfg || {};
+      bufferLen = config.bufferLen || 4096;
+      numChannels = config.numChannels || 2;
+      this.context = source.context;
+      this.node = (this.context.createScriptProcessor || this.context.createJavaScriptNode).call(this.context, bufferLen, numChannels, numChannels);
+      worker = new Worker(config.workerPath || WORKER_PATH);
+      worker.postMessage({
+        command: 'init',
+        config: {
+          sampleRate: this.context.sampleRate,
+          numChannels: numChannels
+        }
+      });
+      recording = false;
+      currCallback = void 0;
+      this.node.onaudioprocess = function(e) {
+        var buffer, channel;
+        if (!recording) {
+          return;
+        }
+        buffer = [];
+        channel = 0;
+        while (channel < numChannels) {
+          buffer.push(e.inputBuffer.getChannelData(channel));
+          channel++;
+        }
+        worker.postMessage({
+          command: 'record',
+          buffer: buffer
+        });
+      };
+      this.configure = function(cfg) {
+        var prop;
+        for (prop in cfg) {
+          if (cfg.hasOwnProperty(prop)) {
+            config[prop] = cfg[prop];
+          }
+        }
+      };
+      this.record = function() {
+        recording = true;
+      };
+      this.stop = function() {
+        recording = false;
+      };
+      this.clear = function() {
+        worker.postMessage({
+          command: 'clear'
+        });
+      };
+      this.getBuffer = function(cb) {
+        currCallback = cb || config.callback;
+        worker.postMessage({
+          command: 'getBuffer'
+        });
+      };
+      this.exportWAV = function(cb, type) {
+        currCallback = cb || config.callback;
+        type = type || config.type || 'audio/wav';
+        if (!currCallback) {
+          throw new Error('Callback not set');
+        }
+        worker.postMessage({
+          command: 'exportWAV',
+          type: type
+        });
+      };
+      this.destroy = function() {
+        worker.terminate();
+        console.log(worker);
+        return delete this;
+      };
+      worker.onmessage = function(e) {
+        var blob;
+        blob = e.data;
+        currCallback(blob);
+      };
+      source.connect(this.node);
+      this.node.connect(this.context.destination);
+    };
+    Recorder.forceDownload = function(blob, filename) {
+      var click, link, url;
+      url = (window.URL || window.webkitURL).createObjectURL(blob);
+      link = window.document.createElement('a');
+      link.href = url;
+      link.download = filename || 'output.wav';
+      click = document.createEvent('Event');
+      click.initEvent('click', true, true);
+      link.dispatchEvent(click);
+    };
+    window.Recorder = Recorder;
+  })(window);
+
+}).call(this);
+
+(function() {
+  angular.module("synthesizer").service('Auth', function($http, PromiseFactory) {
+    var Auth, USER_EMAIL_CACHE_KEY, USER_TOKEN_CACHE_KEY;
+    USER_EMAIL_CACHE_KEY = "user_email";
+    USER_TOKEN_CACHE_KEY = "user_token";
+    return new (Auth = (function() {
+      function Auth() {
+        this.setAuthToken(localStorage.getItem(USER_EMAIL_CACHE_KEY), localStorage.getItem(USER_TOKEN_CACHE_KEY));
+      }
+
+      Auth.prototype.setAuthToken = function(email, token, user) {
+        this.email = email != null ? email : null;
+        this.token = token != null ? token : null;
+        if (this.email && this.token) {
+          $http.defaults.headers.common["X-User-Email"] = this.email;
+          $http.defaults.headers.common["X-User-Token"] = this.token;
+          localStorage.setItem(USER_EMAIL_CACHE_KEY, this.email);
+          localStorage.setItem(USER_TOKEN_CACHE_KEY, this.token);
+        } else {
+          delete $http.defaults.headers.common["X-User-Email"];
+          delete $http.defaults.headers.common["X-User-Token"];
+          localStorage.removeItem(USER_EMAIL_CACHE_KEY);
+          localStorage.removeItem(USER_TOKEN_CACHE_KEY);
+        }
+        return this.refreshUser(user);
+      };
+
+      Auth.prototype.refreshUser = function(user) {
+        if (user == null) {
+          user = null;
+        }
+        return this.user = user ? (user.$promise = PromiseFactory(user), user.$resolved = true, user) : this.email && this.token ? void 0 : null;
+      };
+
+      Auth.prototype.isSignedIn = function() {
+        return !!this.token;
+      };
+
+      Auth.prototype.resetSession = function() {
+        return this.setAuthToken(null, null);
+      };
+
+      return Auth;
+
+    })());
   });
 
 }).call(this);
