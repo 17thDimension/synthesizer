@@ -926,7 +926,7 @@ A simple example service that returns some data.
     var attack, audioContext, oscillators, release, rootFrequency;
     audioContext = AudioContextService.getContext();
     oscillators = [];
-    rootFrequency = 256;
+    rootFrequency = 432;
     release = .1;
     attack = 0;
     return {
@@ -1084,8 +1084,15 @@ A simple example service that returns some data.
         recording = false;
         recorder.stop();
         return recorder.getBuffer(function(buffer) {
-          callback(buffer);
-          return recorder.clear();
+          return recorder.exportWAV(function(blob) {
+            var dl, url;
+            url = URL.createObjectURL(blob);
+            dl = document.createElement('a');
+            dl.href = url;
+            dl.innerHTML = (new Date).toISOString() + '.wav';
+            callback(buffer);
+            return recorder.clear();
+          });
         });
       },
       toggleRecording: function(callback) {
